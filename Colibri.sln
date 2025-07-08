@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Colibri.Data", "Colibri.Dat
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Colibri.ConnectNetwork", "Colibri.ConnectNetwork\Colibri.ConnectNetwork.csproj", "{DAF9BCC6-5FFC-4B40-8D31-648B2B1EDEDC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Colibri.WebApi", "Colibri.WebApi\Colibri.WebApi.csproj", "{17058CFB-85C0-45AA-A1C1-ACD5881A769F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{DAF9BCC6-5FFC-4B40-8D31-648B2B1EDEDC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DAF9BCC6-5FFC-4B40-8D31-648B2B1EDEDC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DAF9BCC6-5FFC-4B40-8D31-648B2B1EDEDC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{17058CFB-85C0-45AA-A1C1-ACD5881A769F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{17058CFB-85C0-45AA-A1C1-ACD5881A769F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{17058CFB-85C0-45AA-A1C1-ACD5881A769F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{17058CFB-85C0-45AA-A1C1-ACD5881A769F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
