@@ -310,7 +310,7 @@ namespace Colibri.Data.Services
         {
             try
             {
-                var existingRole = await _roleManager.FindByIdAsync(id.ToString());
+                var existingRole = await _roleManager.FindByIdAsync(roleId.ToString());
                 if (existingRole == null) return false;
 
                 existingRole.Name = roleName;

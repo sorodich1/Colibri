@@ -2,8 +2,15 @@
 
 namespace Colibri.Data.Helpers
 {
+    /// <summary>
+    /// 
+    /// </summary>
     public class AudiTable
     {
+        /// <summary>
+        /// 
+        /// </summary>
+        public int Id { get; set; }
         /// <summary>
         /// Дата создания поля
         /// </summary>
