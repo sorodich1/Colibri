@@ -1,4 +1,6 @@
-﻿using Colibri.Data.Context;
+﻿using Colibri.ConnectNetwork.Services;
+using Colibri.ConnectNetwork.Services.Abstract;
+using Colibri.Data.Context;
 using Colibri.Data.Services;
 using Colibri.Data.Services.Abstracts;
 using Colibri.WebApi.Services;
@@ -23,6 +25,9 @@ namespace Colibri.WebApi.ConfigureService
             services.AddTransient<IAccountService, AccountService>();
             services.AddTransient<ILoggerService, LoggerService>();
             services.AddTransient<IAppDbContext, AppDbContext>();
+            services.AddTransient<IClientOrderService, ClientOrderService>();
+            services.AddTransient<IHttpConnectService, HttpConnectService>();
+            services.AddTransient<ITcpConnectService, TcpConnectService>();
 
             services.AddTransient<IJwtGenerator>(provider =>
             new JwtGenerator(
