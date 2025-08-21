@@ -12,13 +12,29 @@ namespace Colibri.Data.Entity
         /// </summary>
         public int DroneRouteId { get; set; }
         /// <summary>
-        /// Широта
+        /// Широта стартовая
         /// </summary>
-        public decimal Latitude { get; set; }
+        public decimal LatitudeStart { get; set; }
         /// <summary>
-        /// Долгота
+        /// Долгота стартовая
         /// </summary>
-        public decimal Longitude { get; set; }
+        public decimal LongitudeStart { get; set; }
+        /// <summary>
+        /// Широта конечная
+        /// </summary>
+        public decimal LatitudeEnd { get; set; }
+        /// <summary>
+        /// Долгота конечная
+        /// </summary>
+        public decimal LongitudeEnd { get; set; }
+        /// <summary>
+        /// Дистанция
+        /// </summary>
+        public decimal Distance { get; set; }
+        /// <summary>
+        /// Файл маршрута
+        /// </summary>
+        public decimal RouteFile { get; set; }
         /// <summary>
         /// Преодаление точки маршрута
         /// </summary>
