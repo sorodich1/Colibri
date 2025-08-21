@@ -1,0 +1,59 @@
+{
+  "Serial": 0,
+  "Start": {
+    "Latitude": 55.7558,
+    "Longitude": 37.6173
+  },
+  "End": {
+    "Latitude": 55.858,
+    "Longitude": 35.9176
+  },
+  "Distance": 106.817,
+  "Route": "По прямой",
+  "RoutePoints": [
+    {
+      "Latitude": 55.7558,
+      "Longitude": 35.9176
+    },
+    {
+      "Latitude": 55.76602,
+      "Longitude": 36.08757
+    },
+    {
+      "Latitude": 55.77624,
+      "Longitude": 36.25754
+    },
+    {
+      "Latitude": 55.78646,
+      "Longitude": 36.42751
+    },
+    {
+      "Latitude": 55.79668,
+      "Longitude": 36.59748
+    },
+    {
+      "Latitude": 55.8069,
+      "Longitude": 36.76745
+    },
+    {
+      "Latitude": 55.817119999999996,
+      "Longitude": 36.93742
+    },
+    {
+      "Latitude": 55.82734,
+      "Longitude": 37.10739
+    },
+    {
+      "Latitude": 55.837559999999996,
+      "Longitude": 37.27736
+    },
+    {
+      "Latitude": 55.84778,
+      "Longitude": 37.44733
+    },
+    {
+      "Latitude": 55.858,
+      "Longitude": 37.6173
+    }
+  ]
+}
