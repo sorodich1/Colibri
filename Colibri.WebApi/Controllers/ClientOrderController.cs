@@ -165,5 +165,25 @@ namespace Colibri.WebApi.Controllers
                 return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
             }
         }
+
+        /// <summary>
+        /// Получение всех заказов
+        /// </summary>
+        /// <returns>Заказы</returns>
+        [Authorize]
+        [HttpGet("getOrders")]
+        public async Task<IActionResult> GetOrders()
+        {
+            try
+            {
+                var orders = await _clientOrder.GetOrdersAsync();
+                return Ok(orders);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
+                return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
+            }
+        }
     }
 }

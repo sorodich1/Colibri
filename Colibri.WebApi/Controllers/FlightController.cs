@@ -1,13 +1,15 @@
 ﻿using Colibri.ConnectNetwork.Data;
-using Colibri.ConnectNetwork.Services;
+using Colibri.ConnectNetwork.Services.Abstract;
+using Colibri.Data.Helpers;
+using Colibri.Data.Services.Abstracts;
 using Colibri.GetDirection;
-using Colibri.GetDirection.Data;
 using Colibri.WebApi.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
-
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using System.Collections.Generic;
+using System;
 using System.Threading.Tasks;
 
 namespace Colibri.WebApi.Controllers
@@ -17,10 +19,12 @@ namespace Colibri.WebApi.Controllers
     /// </summary>
     [Route("flight")]
     [ApiController]
-    public class FlightController(HttpConnectService connect, IConfiguration configuration) : Controller
+    public class FlightController(IHttpConnectService connect, ILoggerService logger, IConfiguration configuration) : Controller
     {
-        private readonly HttpConnectService _connect = connect;
+        private readonly IHttpConnectService _connect = connect;
         private readonly IConfiguration _configuration = configuration;
+        private readonly ILoggerService _logger = logger;
+
         /// <summary>
         /// Передача гео точек
         /// </summary>
@@ -28,7 +32,20 @@ namespace Colibri.WebApi.Controllers
         [HttpPost("orderlocation")]
         public async Task<IActionResult> GeodataTransfer([FromBody] OrderLocation routeResponse)
         {
-            string jsonDronBox = await _connect.GetAsync(_configuration["Url:DronBox"]);
+            string jsonDronBox = @"
+            {
+                ""Lat"": ""55.7558"",
+                ""Lon"": ""37.6173"",
+                ""Alt"": ""150"",
+                ""Speed"": ""45"",
+                ""Course"": ""180"",
+                ""Sats"": ""8"",
+                ""FixQuality"": ""1"",
+                ""Hdop"": ""0.8"",
+                ""Timestamp"": ""2024-04-27T12:34:56Z""
+            }";
+
+            // await _connect.GetAsync(_configuration["Url:DronBox"]);
 
             var gps = JsonConvert.DeserializeObject<GpsJson>(jsonDronBox);
 
@@ -37,6 +54,26 @@ namespace Colibri.WebApi.Controllers
             var jsonMission = await DirectionJson.MissionFile(json);
 
             return Ok(jsonMission);
+        }
+
+        /// <summary>
+        /// Открытие бокса дрона
+        /// </summary>
+        /// <param name="isActive">true - открыть бокс, false - закрыть бокс</param>
+        /// <returns></returns>
+        [Authorize]
+        [HttpPost("openbox")]
+        public async Task<IActionResult> OpenBox(bool isActive)
+        {
+            try
+            {
+                return Ok("success");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
+                return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
+            }
         }
     }
 }
