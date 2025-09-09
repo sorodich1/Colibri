@@ -2,6 +2,9 @@
 
 namespace Colibri.Data.Helpers
 {
+    /// <summary>
+    /// Вспомогательный базовый интерфейс сущностей
+    /// </summary>
     public interface IAudiTable
     {
         /// <summary>

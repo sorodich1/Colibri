@@ -1,5 +1,8 @@
 ﻿namespace Colibri.Data.Helpers
 {
+    /// <summary>
+    /// Вспомогательный базовый класс сущностей
+    /// </summary>
     public class Identity : IHaveId
     {
         /// <summary>

@@ -6,10 +6,16 @@ using System.Threading.Tasks;
 
 namespace Colibri.ConnectNetwork.Services
 {
+    /// <summary>
+    /// Реализация TCP-сервера, который слушает входящие подключения и обрабатывает сообщения клиентов.
+    /// </summary>
     public class TcpServer
     {
         private TcpListener _listener;
-
+        /// <summary>
+        /// Запускает сервер на указанном порту и начинает слушать входящие соединения.
+        /// </summary>
+        /// <param name="port">Порт, на котором будет запущен сервер.</param>
         public void Start(int port)
         {
             _listener = new TcpListener(IPAddress.Any, port);
@@ -18,7 +24,9 @@ namespace Colibri.ConnectNetwork.Services
 
             Task.Run(() => AcceptClients());
         }
-
+        /// <summary>
+        /// Асинхронно принимает входящие подключения и создает для каждого клиента отдельную задачу для обработки.
+        /// </summary>
         private async Task AcceptClients()
         {
             while (true)
@@ -27,7 +35,10 @@ namespace Colibri.ConnectNetwork.Services
                 await Task.Run(() => HandleClient(client));
             }
         }
-
+        /// <summary>
+        /// Обрабатывает подключенного клиента: читает сообщения и отправляет обратно.
+        /// </summary>
+        /// <param name="client">Объект клиента TCP, с которым происходит взаимодействие.</param>
         private async Task HandleClient(TcpClient client)
         {
             Console.WriteLine("Клиент подключен.");
@@ -49,7 +60,9 @@ namespace Colibri.ConnectNetwork.Services
             client.Close();
             Console.WriteLine("Соединение закрыто.");
         }
-
+        /// <summary>
+        /// Останавливает сервер, прекращая слушать входящие подключения.
+        /// </summary>
         public void Stop()
         {
             _listener.Stop();

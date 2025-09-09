@@ -5,11 +5,26 @@ using System.Text;
 
 namespace Colibri.ConnectNetwork.Services
 {
+    /// <summary>
+    /// Реализация сервиса для TCP-подключений, предоставляющая методы для подключения, отправки, получения и отключения.
+    /// </summary>
     public class TcpConnectService : ITcpConnectService
     {
+        /// <summary>
+        /// Объект TcpClient для установления TCP-соединения.
+        /// </summary>
         private TcpClient _client;
+        /// <summary>
+        /// Объект NetworkStream для обмена данными по TCP.
+        /// </summary>
         private NetworkStream _stream;
 
+        /// <summary>
+        /// Объект TcpClient для установления TCP-соединения.
+        /// </summary>
+        /// <param name="host">Адрес сервера для подключения.</param>
+        /// <param name="port">Порт для подключения.</param>
+        /// <exception cref="InvalidOperationException">Возникает при ошибке подключения.</exception>
         public void Connect(string host, int port)
         {
             try
@@ -23,6 +38,10 @@ namespace Colibri.ConnectNetwork.Services
             }
         }
 
+        /// <summary>
+        /// Отключает текущие TCP-соединение.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">Возникает при ошибке отключения.</exception>
         public void Disconnect()
         {
             try
@@ -38,6 +57,11 @@ namespace Colibri.ConnectNetwork.Services
             }
         }
 
+        /// <summary>
+        /// Получает сообщение, отправленное по TCP-соединению.
+        /// </summary>
+        /// <returns>Строка с полученными данными.</returns>
+        /// <exception cref="InvalidOperationException">Возникает, если клиент не подключен или при ошибке чтения.</exception>
         public string Receive()
         {
             try
@@ -56,6 +80,11 @@ namespace Colibri.ConnectNetwork.Services
             }
         }
 
+        /// <summary>
+        /// Отправляет сообщение по TCP-соединению.
+        /// </summary>
+        /// <param name="message">Сообщение для отправки.</param>
+        /// <exception cref="InvalidOperationException">Возникает, если клиент не подключен или при ошибке отправки.</exception>
         public void Send(string message)
         {
             try

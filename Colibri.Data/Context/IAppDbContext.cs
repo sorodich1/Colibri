@@ -5,6 +5,9 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace Colibri.Data.Context
 {
+    /// <summary>
+    /// Основной интерфейс для работы с базой данных
+    /// </summary>
     public interface IAppDbContext
     {
         /// <summary>

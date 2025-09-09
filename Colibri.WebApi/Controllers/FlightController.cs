@@ -1,5 +1,6 @@
 ﻿using Colibri.ConnectNetwork.Data;
 using Colibri.ConnectNetwork.Services.Abstract;
+using Colibri.Data.Entity;
 using Colibri.Data.Helpers;
 using Colibri.Data.Services.Abstracts;
 using Colibri.GetDirection;
@@ -19,11 +20,12 @@ namespace Colibri.WebApi.Controllers
     /// </summary>
     [Route("flight")]
     [ApiController]
-    public class FlightController(IHttpConnectService connect, ILoggerService logger, IConfiguration configuration) : Controller
+    public class FlightController(IHttpConnectService connect, ILoggerService logger, IConfiguration configuration, IFlightService flightServece) : Controller
     {
         private readonly IHttpConnectService _connect = connect;
         private readonly IConfiguration _configuration = configuration;
         private readonly ILoggerService _logger = logger;
+        private readonly IFlightService _flightServece = flightServece;
 
         /// <summary>
         /// Передача гео точек
@@ -40,6 +42,7 @@ namespace Colibri.WebApi.Controllers
                 ""Speed"": ""45"",
                 ""Course"": ""180"",
                 ""Sats"": ""8"",
+                
                 ""FixQuality"": ""1"",
                 ""Hdop"": ""0.8"",
                 ""Timestamp"": ""2024-04-27T12:34:56Z""
@@ -64,6 +67,37 @@ namespace Colibri.WebApi.Controllers
         [Authorize]
         [HttpPost("openbox")]
         public async Task<IActionResult> OpenBox(bool isActive)
+        {
+            try
+            {
+                EventRegistration registration = new()
+                {
+                    EventId = 1,
+                    IsActive = isActive,
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now,
+                    IsDeleted = false
+                };
+
+                await _flightServece.AddEventRegistration(registration);
+
+                return Ok("success");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
+                return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
+            }
+        }
+
+        /// <summary>
+        /// Проверка работоспособности системы
+        /// </summary>
+        /// <param name="isActive">true - открыть бокс, false - закрыть бокс</param>
+        /// <returns></returns>
+        [Authorize]
+        [HttpPost("SystemCheck")]
+        public async Task<IActionResult> SystemCheck(bool isActive)
         {
             try
             {

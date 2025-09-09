@@ -6,10 +6,20 @@ using System.Threading.Tasks;
 
 namespace Colibri.ConnectNetwork.Services
 {
+    /// <summary>
+    /// Реализует простой HTTP-сервер на базе HttpListener для обработки входящих запросов.
+    /// </summary>
     public class HttpServer
     {
-        private readonly HttpListener _listener = new ();
+        /// <summary>
+        /// Экземпляр HttpListener, который слушает входящие HTTP-запросы.
+        /// </summary>
+        private readonly HttpListener _listener = new();
 
+        /// <summary>
+        /// Запускает сервер и начинает прослушивание запросов по указанному префиксу.
+        /// </summary>
+        /// <param name="prefic">Префикс URL, по которому сервер будет слушать запросы (например, "http://localhost:8080/").</param>
         public void Start(string prefic)
         {
             _listener.Prefixes.Add(prefic);
@@ -20,6 +30,9 @@ namespace Colibri.ConnectNetwork.Services
             Task.Run(() => AcceptClient());
         }
 
+        /// <summary>
+        /// Асинхронно принимает входящие соединения и инициирует обработку каждого клиента.
+        /// </summary>
         private async Task AcceptClient()
         {
             while (true)
@@ -29,6 +42,10 @@ namespace Colibri.ConnectNetwork.Services
             }
         }
 
+        /// <summary>
+        /// Обрабатывает входящий HTTP-запрос и формирует ответ.
+        /// </summary>
+        /// <param name="context">Контекст запроса, содержащий сведения о запросе и ответе.</param>
         private async Task HandleRequest(HttpListenerContext context)
         {
             Console.WriteLine("Подключение клиента...");
@@ -72,6 +89,9 @@ namespace Colibri.ConnectNetwork.Services
             Console.WriteLine("Ответ отправлен");
         }
 
+        /// <summary>
+        /// Останавливает сервер и прекращает прослушивание входящих запросов.
+        /// </summary>
         public void Stop()
         {
             _listener.Stop();

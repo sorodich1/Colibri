@@ -3,6 +3,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Colibri.Data.Context
 {
+    /// <summary>
+    /// Основной класс работы с базой данных
+    /// </summary>
     public class AppDbContext : AppDbContextBase, IAppDbContext
     {
         /// <summary>
@@ -38,5 +41,13 @@ namespace Colibri.Data.Context
         /// Сущность маршрута дрона
         /// </summary>
         public DbSet<DroneRoute> DroneRouts { get; set; }
+        /// <summary>
+        /// Сущность состояния события
+        /// </summary>
+        public DbSet<EventRegistration> EventRegistrations { get; set; }
+        /// <summary>
+        /// Сущность событий
+        /// </summary>
+        public DbSet<Event> Events { get; set; }
     }
 }
