@@ -46,7 +46,7 @@ namespace Colibri.WebApi.Controllers
 
                 return Ok("success");
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
                 return Ok("error");
@@ -68,7 +68,7 @@ namespace Colibri.WebApi.Controllers
 
                 return Ok("success");
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
                 return Ok("error");
@@ -91,7 +91,26 @@ namespace Colibri.WebApi.Controllers
 
                 return Ok("success");
             }
-            catch(Exception ex)
+            catch (Exception ex)
+            {
+                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
+                return Ok("error");
+            }
+        }
+
+        [HttpPost("PostTelemetryData")]
+        public async Task<IActionResult> PostTelemetryData([FromBody] TelemetryData telemetryData)
+        {
+            try
+            {
+                _logger.LogMessage(User, $"Received telemetry: " +
+                                   $"Lat: {telemetryData.Latitude}" +
+                                   $"Lon: {telemetryData.Longitude}" +
+                                   $"Battery: {telemetryData.BatteryPercentage}", LogLevel.Information);
+
+                return Ok(new { message = "Telemetry received successuffuly" });
+            }
+            catch (Exception ex)
             {
                 _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
                 return Ok("error");
