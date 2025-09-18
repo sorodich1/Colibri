@@ -89,25 +89,5 @@ namespace Colibri.WebApi.Controllers
                 return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
             }
         }
-
-        /// <summary>
-        /// Проверка работоспособности системы
-        /// </summary>
-        /// <param name="isActive">true - открыть бокс, false - закрыть бокс</param>
-        /// <returns></returns>
-        [Authorize]
-        [HttpPost("SystemCheck")]
-        public async Task<IActionResult> SystemCheck(bool isActive)
-        {
-            try
-            {
-                return Ok("success");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
-                return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
-            }
-        }
     }
 }

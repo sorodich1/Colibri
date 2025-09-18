@@ -12,7 +12,7 @@ namespace Colibri.WebApi
     public class Program
     {
         /// <summary>
-        /// Точка входа в приложение
+        /// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         /// </summary>
         /// <param name="args"></param>
         public static void Main(string[] args)
@@ -27,7 +27,7 @@ namespace Colibri.WebApi
             {
                 builder.Host.UseSerilog();
 
-                Log.Information("Запуск приложения");
+                Log.Information("пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ");
 
                 BaseConfigure.Configuration(builder.Services, builder.Configuration);
                 AuthConfigure.Configuration(builder.Services, builder.Configuration);
@@ -53,24 +53,11 @@ namespace Colibri.WebApi
                     c.RoutePrefix = string.Empty;
                 });
 
-                //using (var scope = app.Services.CreateScope())
-                //{
-                //    var context = scope.ServiceProvider.GetRequiredService<ILoggerService>();
-                //    try
-                //    {
-                //        context.LogMessage(null, "Подключение установлено", Microsoft.Extensions.Logging.LogLevel.Information);
-                //    }
-                //    catch (Exception ex)
-                //    {
-                //        Console.WriteLine($"Ошибка при подключении к базе данных: {ex}");
-                //    }
-                //}
-
                 app.Run();
             }
             catch(Exception ex)
             {
-                Log.Fatal(ex, "Приложение завершилось с ошибкой");
+                Log.Fatal(ex, "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ");
             }
             finally
             {
