@@ -98,6 +98,11 @@ namespace Colibri.WebApi.Controllers
             }
         }
 
+        /// <summary>
+        /// Передача телеметрии от дрона
+        /// </summary>
+        /// <param name="telemetryData">Объект данных (гео позиция, высота, батарея и т.д.)</param>
+        /// <returns></returns>
         [HttpPost("PostTelemetryData")]
         public async Task<IActionResult> PostTelemetryData([FromBody] TelemetryData telemetryData)
         {

@@ -24,6 +24,10 @@ namespace Colibri.WebApi.Models
         [EmailAddress(ErrorMessage = "Некорректный формат email")]
         public string Email { get; set; }
         /// <summary>
+        /// Роль пользователя
+        /// </summary>
+        public string Role { get; set; }
+        /// <summary>
         /// Пароль пользователя
         /// </summary>
         [Required(ErrorMessage = "Введите пароль")]

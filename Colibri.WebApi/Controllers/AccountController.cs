@@ -24,7 +24,11 @@ namespace Colibri.WebApi.Controllers
         /// <summary>
         /// Регистрирует нового пользователя с указанными данными.
         /// </summary>
-        /// <param name="register">Объект, содержащий данные для регистрации пользователя.</param>
+        /// <param name="register">Объект, содержащий данные для регистрации пользователя с назначением роли. 
+        /// Имена ролей:
+        /// buyer - покупатель
+        /// seller - продавец
+        /// technician - техник</param>
         /// <returns>Результат регистрации. Возвращает <see cref="OkResult"/> при успешной регистрации или <see cref="BadRequestResult"/> при ошибке.</returns>
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto register)
@@ -45,8 +49,26 @@ namespace Colibri.WebApi.Controllers
 
                 if (result)
                 {
-                    _logger.LogMessage(User, "Пользователь зарегистрирован", LogLevel.Information);
-                    return Ok(new { Message = "Регистрация прошла успешна" });
+                    if(!string.IsNullOrEmpty(register.Role))
+                    {
+                        var roleResult = await _account.RoleAssignmentAsync(user, register.Role);
+
+                        if(roleResult)
+                        {
+                            _logger.LogMessage(User, $"Пользователь зарегистрирован с ролью: [{register.Role}]", LogLevel.Information);
+                            return Ok(new { Message = $"Регистрация прошла успешно. Роль '{register.Role}' назначена." });
+                        }
+                        else
+                        {
+                            _logger.LogMessage(User, $"Пользователь зарегистрирован, но не удалось назначить роль: [{register.Role}]", LogLevel.Warning);
+                            return Ok(new { Message = "Регистрация прошла успешно, но не удалось назначить роль." });
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogMessage(User, "Пользователь зарегистрирован без роли", LogLevel.Information);
+                        return Ok(new { Message = "Регистрация прошла успешно" });
+                    }
                 }
                 return BadRequest("Пользователь с таким именем уже существует");
             }
