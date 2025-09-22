@@ -1,9 +1,9 @@
 using System.Text.Json.Serialization;
 
-namespace Colibri.Data.Entity;
+namespace Colibri.WebApi.Models;
 
 /// <summary>
-/// Сущность телеметрии 
+/// 
 /// </summary>
 public class TelemetryData
 {
