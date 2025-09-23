@@ -29,6 +29,7 @@ namespace Colibri.WebApi.ConfigureService
             services.AddTransient<ITcpConnectService, TcpConnectService>();
             services.AddTransient<IFlightService, FlightService>();
             services.AddScoped<IHttpConnectService, HttpConnectService>();
+            services.AddScoped<ITelemetryServices, TelemetryServices>();
 
             services.AddTransient<IJwtGenerator>(provider =>
             new JwtGenerator(

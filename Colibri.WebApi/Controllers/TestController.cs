@@ -1,5 +1,7 @@
 using System;
+using System.Text.Json;
 using System.Threading.Tasks;
+using Colibri.ConnectNetwork.Services.Abstract;
 using Colibri.Data.Entity;
 using Colibri.Data.Helpers;
 using Colibri.Data.Services.Abstracts;
@@ -19,11 +21,13 @@ namespace Colibri.WebApi.Controllers
     /// <param name="telemetry">Сервис телеметрии</param>
     [Route("test")]
     [ApiController]
-    public class TestController(ILoggerService logger, IFlightService flightServece, ITelemetryServices telemetry) : ControllerBase
+    public class TestController(ILoggerService logger, IFlightService flightServece, ITelemetryServices telemetry, IHttpConnectService http) : ControllerBase
     {
         private readonly ILoggerService _logger = logger;
         private readonly IFlightService _flightServece = flightServece;
         private readonly ITelemetryServices _telemetry = telemetry;
+        private readonly IHttpConnectService _http = http;
+        private readonly string _droneBaseUrl = "http://78.25.108.95:8080";
 
         /// <summary>
         /// Тестовый метод взлёта на определённую высоту
@@ -48,7 +52,18 @@ namespace Colibri.WebApi.Controllers
 
                 await _flightServece.AddEventRegistration(registration);
 
-                return Ok("success");
+                FlightCommand command = new()
+                {
+                    AltitudeMeters = distance,
+                    ShouldTakeoff = isActive,
+                    CommandId = Guid.NewGuid().ToString()
+                };
+
+                var json = JsonSerializer.Serialize(command);
+
+                var response = await _http.PostAsync(_droneBaseUrl, json);
+
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -139,8 +154,6 @@ namespace Colibri.WebApi.Controllers
                 });
 
             }
-        }
-
-        
+        } 
     }
 }
