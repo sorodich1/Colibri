@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Colibri.Data.Entity;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
@@ -19,5 +20,12 @@ namespace Colibri.Data.Services.Abstracts
         /// <param name="logLevel">Уровень логирования, определяющий важность сообщения (<see cref="LogLevel"/>).</param>
         /// <param name="callback">Необязательный коллбэк, который будет выполнен после записи сообщения в лог.</param>
         void LogMessage(ClaimsPrincipal claims, string message, LogLevel logLevel, Func<Task> callback = null);
+
+        /// <summary>
+        /// Записывает телеметрию в БД
+        /// </summary>
+        /// <param name="telemetry">Сущность телеметрии</param>
+        /// <returns>Результат</returns>
+        Task AddTelemetryAsync(Telemetry telemetry);
     }
 }

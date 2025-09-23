@@ -3,6 +3,8 @@ using System.Threading.Tasks;
 using Colibri.Data.Entity;
 using Colibri.Data.Helpers;
 using Colibri.Data.Services.Abstracts;
+using Colibri.WebApi.Models;
+using Colibri.WebApi.Services.Abstract;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -14,12 +16,14 @@ namespace Colibri.WebApi.Controllers
     /// </summary>
     /// <param name="logger">Логирование данных</param>
     /// <param name="flightServece">Полётный сервис</param>
+    /// <param name="telemetry">Сервис телеметрии</param>
     [Route("test")]
     [ApiController]
-    public class TestController(ILoggerService logger, IFlightService flightServece) : ControllerBase
+    public class TestController(ILoggerService logger, IFlightService flightServece, ITelemetryServices telemetry) : ControllerBase
     {
         private readonly ILoggerService _logger = logger;
         private readonly IFlightService _flightServece = flightServece;
+        private readonly ITelemetryServices _telemetry = telemetry;
 
         /// <summary>
         /// Тестовый метод взлёта на определённую высоту
@@ -98,28 +102,45 @@ namespace Colibri.WebApi.Controllers
             }
         }
 
-        /// <summary>
-        /// Передача телеметрии от дрона
-        /// </summary>
-        /// <param name="telemetryData">Объект данных (гео позиция, высота, батарея и т.д.)</param>
-        /// <returns></returns>
         [HttpPost("PostTelemetryData")]
+        [ProducesResponseType(typeof(TelemetryResponse), 200)]
+        [ProducesResponseType(typeof(TelemetryResponse), 400)]
         public async Task<IActionResult> PostTelemetryData([FromBody] TelemetryData telemetryData)
         {
             try
             {
-                _logger.LogMessage(User, $"Received telemetry: " +
-                                   $"Lat: {telemetryData.Latitude}" +
-                                   $"Lon: {telemetryData.Longitude}" +
-                                   $"Battery: {telemetryData.BatteryPercentage}", LogLevel.Information);
+                if(telemetryData == null)
+                {   
+                    return BadRequest(new TelemetryResponse
+                    {
+                        Message = "Telemetry data is required",
+                        Success = false
+                    });
+                }
 
-                return Ok(new { message = "Telemetry received successuffuly" });
+                var result = await _telemetry.ProcessTelemetryAsync(telemetryData);
+
+                if(result.Success)
+                {
+                    return Ok(result);
+                }
+                else
+                {
+                    return BadRequest(result);
+                }
             }
-            catch (Exception ex)
+            catch(Exception ex)
             {
                 _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
-                return Ok("error");
+
+                return StatusCode(500, new TelemetryResponse{
+                    Message = "",
+                    Success = false
+                });
+
             }
         }
+
+        
     }
 }

@@ -17,6 +17,25 @@ namespace Colibri.Data.Services
     public class LoggerService(AppDbContext context) : ILoggerService
     {
         private readonly AppDbContext _context = context;
+
+        /// <summary>
+        /// Метод сохраняющий показание телеметрии в БД
+        /// </summary>
+        /// <param name="telemetry">телеметрия</param>
+        /// <exception cref="InvalidOperationException">Ошибка сохранения телеметрии в базе данных</exception>
+        public async Task AddTelemetryAsync(Telemetry telemetry)
+        {
+            try
+            {
+                _context.Telemetries.Add(telemetry);
+                await _context.SaveChangesAsync();
+            }
+            catch(Exception ex)
+            {
+                throw new InvalidOperationException("Ошибка сохранения телеметрии в базе данных", ex);
+            }
+        }
+
         /// <summary>
         /// Записывает сообщение в лог с указанным уровнем логирования и данными о пользователе.
         /// </summary>

@@ -1,27 +1,27 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using Colibri.Data.Entity;
+using Colibri.Data.Services.Abstracts;
 using Colibri.WebApi.Models;
 using Colibri.WebApi.Services.Abstract;
 
 namespace Colibri.WebApi.Services;
 
-public class TelemetryServices : ITelemetryServices
+public class TelemetryServices(ILoggerService logger) : ITelemetryServices
 {
     private static readonly List<TelemetryData> _telemetryDatas = [];
+    private readonly ILoggerService _logger = logger;
     private const int MAX_HISTORY = 1000;
 
     public async Task<List<TelemetryData>> GetRecentTelemetryAsync(int count = 10)
     {
-        try
-        {
-            
-        }
-        catch (Exception ex)
-        {
-            // throw new InvalidOperationException("Error processing telemetry data", ex);
-        }
+        return await Task.FromResult(_telemetryDatas
+                                     .OrderByDescending(t => t.Timestamp)
+                                     .Take(count)
+                                     .ToList());
     }
 
     public async Task<TelemetryResponse> ProcessTelemetryAsync(TelemetryData telemetryData)
@@ -36,10 +36,31 @@ public class TelemetryServices : ITelemetryServices
                     Success = false
                 };
             }
-                 return new TelemetryResponse
+
+            var calibration = ParseCalibrationStatus(telemetryData.CalibrationStatus);
+
+                Telemetry data = new()
                 {
-                    Message = "Invalid telemetry data",
-                    Success = false
+                    Altitude = telemetryData.Altitude,
+                    Latitude = telemetryData.Latitude,
+                    Longitude = telemetryData.Longitude,
+                    BatteryPercentage = telemetryData.BatteryPercentage,
+                    BatteryVoltage = telemetryData.BatteryVoltage,
+                    GpsStatus = telemetryData.GpsStatus,
+                    RelativeAltitude = telemetryData.RelativeAltitude,
+                    Accel = calibration.Accelerometer,
+                    Gyro = calibration.Gyro,
+                    Mag = calibration.Magnetometer
+                };
+
+                await SaveToHistoryAsync(telemetryData);
+
+                await _logger.AddTelemetryAsync(data);
+
+                return new TelemetryResponse
+                {
+                    Message = "Telemetry received successfully",
+                    Success = true
                 };
         }
         catch (Exception ex)
@@ -54,6 +75,18 @@ public class TelemetryServices : ITelemetryServices
         }
     }
 
+    public CalibrationStatus ParseCalibrationStatus(string status)
+    {
+        var part = status.Split(' ');
+
+        return new CalibrationStatus
+        {
+            Gyro = part[0].Contains("OK"),
+            Accelerometer = part[1].Contains("OK"),
+            Magnetometer = part[2].Contains("OK")
+        };
+    }
+
     private bool IsValidTelemetry(TelemetryData data)
     {
         if (data.Latitude < -90 || data.Latitude > 90)
@@ -66,5 +99,21 @@ public class TelemetryServices : ITelemetryServices
             return false;
 
         return true;         
+    }
+
+    private async Task SaveToHistoryAsync(TelemetryData data)
+    {
+        await Task.Run(() => 
+        {
+            lock(_telemetryDatas)
+            {
+                _telemetryDatas.Add(data);
+
+                if(_telemetryDatas.Count > MAX_HISTORY)
+                {
+                    _telemetryDatas.RemoveRange(0, _telemetryDatas.Count - MAX_HISTORY);
+                }
+            }
+        });
     }
 }

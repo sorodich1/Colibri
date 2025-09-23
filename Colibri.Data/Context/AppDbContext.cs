@@ -49,5 +49,9 @@ namespace Colibri.Data.Context
         /// Сущность событий
         /// </summary>
         public DbSet<Event> Events { get; set; }
+        /// <summary>
+        /// Сущность телеметрии
+        /// </summary>
+        public DbSet<Telemetry> Telemetries { get; set; }
     }
 }
