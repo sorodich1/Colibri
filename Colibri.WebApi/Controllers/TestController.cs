@@ -117,15 +117,21 @@ namespace Colibri.WebApi.Controllers
             }
         }
 
+        /// <summary>
+        /// Обрабатывает получение телеметрических данных от БПЛА
+        /// </summary>
+        /// <param name="telemetryData">Объект с телеметрическими данными БПЛА</param>
+        /// <returns>Результат обработки телеметрии</returns>
         [HttpPost("PostTelemetryData")]
-        [ProducesResponseType(typeof(TelemetryResponse), 200)]
-        [ProducesResponseType(typeof(TelemetryResponse), 400)]
+        [ProducesResponseType(typeof(TelemetryResponse), 200)] // Успешная обработка
+        [ProducesResponseType(typeof(TelemetryResponse), 400)] // Ошибка валидации
         public async Task<IActionResult> PostTelemetryData([FromBody] TelemetryData telemetryData)
         {
             try
             {
-                if(telemetryData == null)
-                {   
+                 // Проверка на null входных данных
+                if (telemetryData == null)
+                {
                     return BadRequest(new TelemetryResponse
                     {
                         Message = "Telemetry data is required",
@@ -133,23 +139,28 @@ namespace Colibri.WebApi.Controllers
                     });
                 }
 
+                // Асинхронная обработка телеметрии сервисом
                 var result = await _telemetry.ProcessTelemetryAsync(telemetryData);
 
-                if(result.Success)
+                // Возврат результата в зависимости от успешности обработки
+                if (result.Success)
                 {
-                    return Ok(result);
+                    return Ok(result); // 200 OK
                 }
                 else
                 {
-                    return BadRequest(result);
+                    return BadRequest(result); // 400 Bad Request
                 }
             }
             catch(Exception ex)
             {
+                // Логирование детальной информации об ошибке
                 _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
 
-                return StatusCode(500, new TelemetryResponse{
-                    Message = "",
+                // Возврат ошибки сервера без деталей клиенту (безопасность)
+                return StatusCode(500, new TelemetryResponse
+                {
+                    Message = ex.Message,
                     Success = false
                 });
 
