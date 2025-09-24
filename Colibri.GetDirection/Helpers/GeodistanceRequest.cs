@@ -2,6 +2,9 @@
 
 namespace Colibri.GetDirection.Helpers
 {
+    /// <summary>
+    /// Запрос дистанции 
+    /// </summary>
     public class GeodistanceRequest
     {
         /// <summary>

@@ -1,5 +1,8 @@
 ﻿namespace Colibri.GetDirection.Helpers
 {
+    /// <summary>
+    /// Точка моршрута
+    /// </summary>
     public class Point
     {
         /// <summary>
@@ -9,6 +12,6 @@
         /// <summary>
         /// Долгота
         /// </summary>
-        public double Longitude {  get; set; }
+        public double Longitude { get; set; }
     }
 }
