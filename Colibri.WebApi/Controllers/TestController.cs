@@ -19,6 +19,7 @@ namespace Colibri.WebApi.Controllers
     /// <param name="logger">Логирование данных</param>
     /// <param name="flightServece">Полётный сервис</param>
     /// <param name="telemetry">Сервис телеметрии</param>
+    /// <param name="http">Сервис телеметрии</param>
     [Route("test")]
     [ApiController]
     public class TestController(ILoggerService logger, IFlightService flightServece, ITelemetryServices telemetry, IHttpConnectService http) : ControllerBase
@@ -27,7 +28,7 @@ namespace Colibri.WebApi.Controllers
         private readonly IFlightService _flightServece = flightServece;
         private readonly ITelemetryServices _telemetry = telemetry;
         private readonly IHttpConnectService _http = http;
-        private readonly string _droneBaseUrl = "http://78.25.108.95:8080";
+        private readonly string _droneBaseUrl = "http://78.25.108.95:8080/api/flight/command";
 
         /// <summary>
         /// Тестовый метод взлёта на определённую высоту
