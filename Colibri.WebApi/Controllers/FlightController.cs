@@ -26,6 +26,8 @@ namespace Colibri.WebApi.Controllers
         private readonly IConfiguration _configuration = configuration;
         private readonly ILoggerService _logger = logger;
         private readonly IFlightService _flightServece = flightServece;
+       // private const string actuatorUrl = @"http://85.141.101.21:8081/api/actuator/control"; 
+        private const string actuatorUrl = @"http://78.25.108.95:8081/api/actuator/control"; 
 
         /// <summary>
         /// Передача гео точек
@@ -80,6 +82,8 @@ namespace Colibri.WebApi.Controllers
                 };
 
                 await _flightServece.AddEventRegistration(registration);
+
+                await _connect.PostAsync(actuatorUrl, isActive.ToString().ToLower());
 
                 return Ok("success");
             }

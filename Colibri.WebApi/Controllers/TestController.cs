@@ -29,6 +29,7 @@ namespace Colibri.WebApi.Controllers
         private readonly ITelemetryServices _telemetry = telemetry;
         private readonly IHttpConnectService _http = http;
         private readonly string _droneBaseUrl = "http://78.25.108.95:8080/api/flight/command";
+        private readonly string _ledBaseUrl = "http://78.25.108.95:8082/api/led/control";
 
         /// <summary>
         /// Тестовый метод взлёта на определённую высоту
@@ -78,6 +79,28 @@ namespace Colibri.WebApi.Controllers
         /// </summary>
         /// <param name="colorNumber">Номер цвета -- 0 - цвет выключен, 1 - зелёный, 2 - крассный</param>
         /// <returns>success - запрос выполнен, error - запрос не выполнен</returns>
+        // [Authorize]
+        // [HttpPost("BacklightTesting")]
+        // public async Task<IActionResult> BacklightTesting(int colorNumber)
+        // {
+        //     try
+        //     {
+        //         _logger.LogMessage(User, $"Выбран цвет с номером {colorNumber}", LogLevel.Information);
+
+        //         return Ok("success");
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
+        //         return Ok("error");
+        //     }
+        // }
+
+                /// <summary>
+        /// Тестирование подсветки дрона
+        /// </summary>
+        /// <param name="colorNumber">Номер цвета -- 0 - цвет выключен, 1 - зелёный, 2 - красный</param>
+        /// <returns>success - запрос выполнен, error - запрос не выполнен</returns>
         [Authorize]
         [HttpPost("BacklightTesting")]
         public async Task<IActionResult> BacklightTesting(int colorNumber)
@@ -85,6 +108,22 @@ namespace Colibri.WebApi.Controllers
             try
             {
                 _logger.LogMessage(User, $"Выбран цвет с номером {colorNumber}", LogLevel.Information);
+
+                // Добавляем запись в базу данных
+                // EventRegistration registration = new()
+                // {
+                //     EventId = 2, // ID события для подсветки (установите нужный ID)
+                //     IsActive = colorNumber > 0, // Активно, если цвет не 0 (не выключен)
+                //     CreatedAt = DateTime.Now,
+                //     UpdatedAt = DateTime.Now,
+                //     IsDeleted = false
+                // };
+
+               // await _flightServece.AddEventRegistration(registration);
+
+                // Отправляем команду на дрон для управления светодиодами
+               // string ledUrl = "http://localhost:8082/api/led/control"; // URL для управления светодиодами
+                await _http.PostAsync(_ledBaseUrl, colorNumber.ToString());
 
                 return Ok("success");
             }
