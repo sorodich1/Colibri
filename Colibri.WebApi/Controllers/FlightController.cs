@@ -1,10 +1,10 @@
-﻿using Colibri.ConnectNetwork.Data;
-using Colibri.ConnectNetwork.Services.Abstract;
+﻿using Colibri.ConnectNetwork.Services.Abstract;
 using Colibri.Data.Entity;
 using Colibri.Data.Helpers;
 using Colibri.Data.Services.Abstracts;
 using Colibri.GetDirection;
 using Colibri.WebApi.Models;
+using Colibri.WebApi.Services.Abstract;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -15,64 +15,76 @@ using System.Threading.Tasks;
 
 namespace Colibri.WebApi.Controllers
 {
-    /// <summary>
-    /// Контроллер управления полётами. 
-    /// </summary>
     [Route("flight")]
     [ApiController]
-    public class FlightController(IHttpConnectService connect, ILoggerService logger, IConfiguration configuration, IFlightService flightServece) : Controller
+    public class FlightController : Controller
     {
-        private readonly IHttpConnectService _connect = connect;
-        private readonly IConfiguration _configuration = configuration;
-        private readonly ILoggerService _logger = logger;
-        private readonly IFlightService _flightServece = flightServece;
-       // private const string actuatorUrl = @"http://85.141.101.21:8081/api/actuator/control"; 
-        private const string actuatorUrl = @"http://78.25.108.95:8081/api/actuator/control"; 
+        private readonly ILoggerService _logger;
+        private readonly IFlightService _flightService;
+        private readonly IDroneConnectionService _droneConnection;
+
+        public FlightController(
+            IConfiguration configuration,
+            ILoggerService logger,
+            IFlightService flightService,
+            IDroneConnectionService droneConnection)
+        {
+            _logger = logger;
+            _flightService = flightService;
+            _droneConnection = droneConnection;
+        }
 
         /// <summary>
         /// Передача гео точек
         /// </summary>
-        /// <returns></returns>
         [HttpPost("orderlocation")]
         public async Task<IActionResult> GeodataTransfer([FromBody] OrderLocation routeResponse)
         {
-            string jsonDronBox = @"
+            try
             {
-                ""Lat"": ""55.7558"",
-                ""Lon"": ""37.6173"",
-                ""Alt"": ""150"",
-                ""Speed"": ""45"",
-                ""Course"": ""180"",
-                ""Sats"": ""8"",
-                
-                ""FixQuality"": ""1"",
-                ""Hdop"": ""0.8"",
-                ""Timestamp"": ""2024-04-27T12:34:56Z""
-            }";
+                // Получаем маршрут
+                var json = await DirectionJson.RouteFly(routeResponse.SellerPoint, routeResponse.BuyerPoint);
+                var jsonMission = await DirectionJson.MissionFile(json);
 
-            // await _connect.GetAsync(_configuration["Url:DronBox"]);
+                // Отправляем маршрут на дрон
+                var command = new
+                {
+                    Command = "SET_MISSION",
+                    Mission = jsonMission,
+                    Timestamp = DateTime.UtcNow
+                };
 
-            var gps = JsonConvert.DeserializeObject<GpsJson>(jsonDronBox);
+                var result = await _droneConnection.SendCommandToDrone("api/flight/mission", command);
 
-            var json = await DirectionJson.RouteFly(routeResponse.SellerPoint, routeResponse.BuyerPoint);
+                if (!result.Success)
+                {
+                    return StatusCode(503, new { error = "Дрон недоступен", details = result.ErrorMessage });
+                }
 
-            var jsonMission = await DirectionJson.MissionFile(json);
-
-            return Ok(jsonMission);
+                return Ok(new { 
+                    mission = jsonMission,
+                    drone = result.DroneUrl,
+                    responseTime = result.ResponseTime.TotalMilliseconds
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
+                return StatusCode(500, new { error = "Ошибка планирования маршрута" });
+            }
         }
 
         /// <summary>
-        /// Открытие бокса дрона
+        /// Открытие/закрытие бокса дрона
         /// </summary>
-        /// <param name="isActive">true - открыть бокс, false - закрыть бокс</param>
-        /// <returns></returns>
         [Authorize]
         [HttpPost("openbox")]
         public async Task<IActionResult> OpenBox(bool isActive)
         {
             try
             {
-                EventRegistration registration = new()
+                // Логируем событие в БД
+                var registration = new EventRegistration
                 {
                     EventId = 1,
                     IsActive = isActive,
@@ -81,16 +93,98 @@ namespace Colibri.WebApi.Controllers
                     IsDeleted = false
                 };
 
-                await _flightServece.AddEventRegistration(registration);
+                await _flightService.AddEventRegistration(registration);
 
-                await _connect.PostAsync(actuatorUrl, isActive.ToString().ToLower());
+                // Отправляем команду на дрон
+                var command = new
+                {
+                    Command = isActive ? "OPEN_BOX" : "CLOSE_BOX",
+                    Timestamp = DateTime.UtcNow
+                };
 
-                return Ok("success");
+                var result = await _droneConnection.SendCommandToDrone("api/actuator/control", command);
+
+                if (!result.Success)
+                {
+                    return StatusCode(503, new { error = "Не удалось отправить команду дрону" });
+                }
+
+                return Ok(new { 
+                    status = "success",
+                    command = isActive ? "open" : "close",
+                    drone = result.DroneUrl
+                });
             }
             catch (Exception ex)
             {
                 _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
-                return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
+                return StatusCode(500, new { error = "Внутренняя ошибка сервера" });
+            }
+        }
+
+        /// <summary>
+        /// Запуск полета
+        /// </summary>
+        [Authorize]
+        [HttpPost("start")]
+        public async Task<IActionResult> StartFlight()
+        {
+            var command = new { Command = "START_FLIGHT", Timestamp = DateTime.UtcNow };
+            var result = await _droneConnection.SendCommandToDrone("api/flight/control", command);
+            
+            if (!result.Success)
+                return StatusCode(503, new { error = "Дрон недоступен" });
+
+            return Ok(new { status = "flight_started", drone = result.DroneUrl });
+        }
+
+        /// <summary>
+        /// Экстренная остановка
+        /// </summary>
+        [Authorize]
+        [HttpPost("emergency")]
+        public async Task<IActionResult> EmergencyStop()
+        {
+            var command = new { Command = "EMERGENCY_STOP", Timestamp = DateTime.UtcNow };
+            var result = await _droneConnection.SendCommandToDrone("api/flight/emergency", command);
+            
+            if (!result.Success)
+                return StatusCode(503, new { error = "Дрон недоступен" });
+
+            return Ok(new { status = "emergency_stop", drone = result.DroneUrl });
+        }
+
+        /// <summary>
+        /// Получение статуса дрона
+        /// </summary>
+        [Authorize]
+        [HttpGet("status")]
+        public async Task<IActionResult> GetDroneStatus()
+        {
+            var result = await _droneConnection.SendCommandToDrone("api/flight/status", new { Command = "GET_STATUS" });
+            
+            if (!result.Success)
+                return StatusCode(503, new { error = "Дрон недоступен" });
+
+            return Ok(new { status = "connected", drone = result.DroneUrl });
+        }
+
+        /// <summary>
+        /// Переключение на следующий дрон
+        /// </summary>
+        [Authorize(Roles = "Admin")]
+        [HttpPost("switch-drone")]
+        public async Task<IActionResult> SwitchDrone()
+        {
+            try
+            {
+                await _droneConnection.SwitchToNextDrone();
+                var activeUrl = await _droneConnection.GetActiveDroneUrl();
+                return Ok(new { message = "Дрон переключен", activeDrone = activeUrl });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(503, new { error = ex.Message });
             }
         }
     }
