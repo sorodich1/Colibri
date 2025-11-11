@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Colibri.WebApi.Models;
 using Colibri.WebApi.Services.Abstract;
@@ -11,58 +12,69 @@ public class MissionPlanningService(IDroneConnectionService droneConnection) : I
 
     public double CalculateDistance(GeoPoint point1, GeoPoint point2)
     {
-        throw new NotImplementedException();
+                    // Расчет расстояния по формуле гаверсинусов
+            var R = 6371; // Радиус Земли в км
+            var dLat = ToRadians(point2.Latitude - point1.Latitude);
+            var dLon = ToRadians(point2.Longitude - point1.Longitude);
+            
+            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                    Math.Cos(ToRadians(point1.Latitude)) * Math.Cos(ToRadians(point2.Latitude)) *
+                    Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+            
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            var distance = R * c; // Расстояние в км
+            
+            return distance * 1000; // Возвращаем в метрах
     }
 
     public TimeSpan CalculateEstimatedTime(double distance, double speed)
     {
-        throw new NotImplementedException();
+        var timeHours = distance / 1000 / speed; // время в часах
+        return TimeSpan.FromHours(timeHours);
     }
 
-    public Task<object> CreateDeliveryMission(GeoPoint startPoint, GeoPoint destination, double cruiseSpeed = 15, double altitude = 10)
+    public async Task<object> CreateDeliveryMission(GeoPoint startPoint, GeoPoint destination, double cruiseSpeed = 15, double altitude = 10)
     {
-        // Создаем явно типизированные объекты для элементов миссии
-        var takeoffItem = new
+        // Создаем mission items с использованием dynamic
+        var missionItems = new List<dynamic>
         {
-            AMSLAltAboveTerrain = (object)null,
-            Altitude = altitude,
-            AltitudeMode = 1,
-            autoContinue = true,
-            command = 22, // MAV_CMD_NAV_TAKEOFF
-            doJumpId = 1,
-            frame = 3,
-            parameters = new object[] { 0, 0, 0, null, startPoint.Latitude, startPoint.Longitude, altitude },
-            type = "SimpleItem"
+            new
+            {
+                AMSLAltAboveTerrain = (object)null,
+                Altitude = altitude,
+                AltitudeMode = 1,
+                autoContinue = true,
+                command = 22, // MAV_CMD_NAV_TAKEOFF
+                doJumpId = 1,
+                frame = 3,
+                parameters = new object[] { 0, 0, 0, null, startPoint.Latitude, startPoint.Longitude, altitude },
+                type = "SimpleItem"
+            },
+            new
+            {
+                AMSLAltAboveTerrain = (object)null,
+                Altitude = altitude,
+                AltitudeMode = 1,
+                autoContinue = true,
+                command = 16, // MAV_CMD_NAV_WAYPOINT
+                doJumpId = 2,
+                frame = 3,
+                parameters = new object[] { 0, 0, 0, null, destination.Latitude, destination.Longitude, altitude },
+                type = "SimpleItem"
+            },
+            new
+            {
+                AMSLAltAboveTerrain = (object)null,
+                Altitude = 0,
+                AltitudeMode = 1,
+                autoContinue = true,
+                command = 21, // MAV_CMD_NAV_LAND
+                doJumpId = 3,
+                frame = 3,
+                parameters = new object[] { 0, 0, 0, null, destination.Latitude, destination.Longitude, 0 },
+                type = "SimpleItem"
+            }
         };
-
-        var waypointItem = new
-        {
-            AMSLAltAboveTerrain = (object)null,
-            Altitude = altitude,
-            AltitudeMode = 1,
-            autoContinue = true,
-            command = 16, // MAV_CMD_NAV_WAYPOINT
-            doJumpId = 2,
-            frame = 3,
-            parameters = new object[] { 0, 0, 0, null, destination.Latitude, destination.Longitude, altitude },
-            type = "SimpleItem"
-        };
-
-        var landItem = new
-        {
-            AMSLAltAboveTerrain = (object)null,
-            Altitude = 0,
-            AltitudeMode = 1,
-            autoContinue = true,
-            command = 21, // MAV_CMD_NAV_LAND
-            doJumpId = 3,
-            frame = 3,
-            parameters = new object[] { 0, 0, 0, null, destination.Latitude, destination.Longitude, 0 },
-            type = "SimpleItem"
-        };
-
-        // Создаем массив с явно указанными объектами
-        var missionItems = new[] { takeoffItem, waypointItem, landItem };
 
         var missionTemplate = new
         {
@@ -80,7 +92,7 @@ public class MissionPlanningService(IDroneConnectionService droneConnection) : I
                 firmwareType = 3,
                 globalPlanAltitudeMode = 1,
                 hoverSpeed = 5,
-                items = missionItems,
+                items = missionItems, // используем List<dynamic>
                 plannedHomePosition = new[] { startPoint.Latitude, startPoint.Longitude, altitude },
                 vehicleType = 2,
                 version = 2
@@ -93,34 +105,37 @@ public class MissionPlanningService(IDroneConnectionService droneConnection) : I
             version = 1
         };
 
-        return Task.FromResult<object>(missionTemplate);
+        return await Task.FromResult(missionTemplate);
     }
 
     public async Task<DronePosition> GetCurrentDronePosition(string droneUrl)
     {
         try
         {
-            var result = await _droneConnection.SendCommandToDrone("api/telemetry/position", new { Command = "GET_POSITION" });
-
-            if (result.Success)
+            // ЗАГЛУШКА: статические координаты дрона для тестирования
+            return new DronePosition
             {
-                return new DronePosition
+                Position = new GeoPoint
                 {
-                    Position = new GeoPoint
-                    {
-                        Latitude = 59.85607073,
-                        Longitude = 30.26375508,
-                        Altitude = 10
-                    },
-                    Timestamp = DateTime.UtcNow,
-                    Status = "Connected"
-                };
-            }
-            throw new Exception("Не удалось получить позицию дрона");
+                    Latitude = 55.7558,  // Статические координаты для теста
+                    Longitude = 37.6173,
+                    Altitude = 0
+                },
+                Speed = 0,
+                Course = 0,
+                Satellites = 12,
+                Timestamp = DateTime.UtcNow,
+                Status = "Connected (Simulation)"
+            };
         }
         catch (Exception ex)
         {
             throw new Exception($"Ошибка получения позиции дрона: {ex.Message}");
         }
+    }
+
+    private double ToRadians(double degrees)
+    {
+        return degrees * Math.PI / 180;
     }
 }

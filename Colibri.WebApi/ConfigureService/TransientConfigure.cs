@@ -31,6 +31,7 @@ namespace Colibri.WebApi.ConfigureService
             services.AddScoped<IHttpConnectService, HttpConnectService>();
             services.AddScoped<ITelemetryServices, TelemetryServices>();
             services.AddScoped<IDroneConnectionService, DroneConnectionService>();
+            services.AddScoped<IMissionPlanningService, MissionPlanningService>();
 
             services.AddTransient<IJwtGenerator>(provider =>
             new JwtGenerator(

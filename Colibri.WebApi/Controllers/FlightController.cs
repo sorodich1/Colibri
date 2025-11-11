@@ -1,5 +1,4 @@
-﻿using Colibri.ConnectNetwork.Services.Abstract;
-using Colibri.Data.Entity;
+﻿using Colibri.Data.Entity;
 using Colibri.Data.Helpers;
 using Colibri.Data.Services.Abstracts;
 using Colibri.GetDirection;
@@ -9,7 +8,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using System;
 using System.Threading.Tasks;
 
@@ -22,16 +20,22 @@ namespace Colibri.WebApi.Controllers
         private readonly ILoggerService _logger;
         private readonly IFlightService _flightService;
         private readonly IDroneConnectionService _droneConnection;
+        private readonly IMissionPlanningService _missionPlanning;
+        private readonly IConfiguration _configuration;
 
         public FlightController(
             IConfiguration configuration,
             ILoggerService logger,
             IFlightService flightService,
-            IDroneConnectionService droneConnection)
+            IDroneConnectionService droneConnection,
+            IMissionPlanningService missionPlanning
+            )
         {
             _logger = logger;
             _flightService = flightService;
             _droneConnection = droneConnection;
+            _configuration = configuration;
+            _missionPlanning = missionPlanning;
         }
 
         /// <summary>

@@ -23,4 +23,6 @@ public class EventRegistration : AudiTable
     /// Позволяет получать подробную информацию о событии, к которому относится регистрация.
     /// </summary>
     public Event Event { get; set; }
+
+    public string AdditionalData { get; set; }
 }

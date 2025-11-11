@@ -55,7 +55,6 @@ public class DroneConnectionService : IDroneConnectionService
     public async Task<DroneConnectionResult> SendCommandToDrone(string endpoint, object command)
     {
         var exceptions = new List<Exception>();
-
         var activeDrones = _drones.Where(d => d.IsActive).OrderBy(d => d.Priority).ToList();
 
         foreach (var drone in activeDrones)
@@ -63,15 +62,30 @@ public class DroneConnectionService : IDroneConnectionService
             try
             {
                 var startTime = DateTime.UtcNow;
-
-                var url = $"{drone.BaseUrl}/{endpoint.TrimStart('/')}";
-
-                var jsonCommand = JsonConvert.SerializeObject(command);
-
-                var response = await _httpConnect.PostAsync(url, jsonCommand);
-
+                
+                // Исправляем endpoint-ы под реальные пути дрона
+                string actualEndpoint = endpoint switch
+                {
+                    "api/health" => "status",           // Дрон использует /status
+                    "api/mission/upload" => "execute-mission", // Дрон использует /execute-mission
+                    _ => endpoint
+                };
+                
+                var url = $"{drone.BaseUrl}/{actualEndpoint.TrimStart('/')}";
+                
+                // Для GET запросов (status)
+                if (actualEndpoint == "status")
+                {
+                    var response = await _httpConnect.GetAsync(url);
+                }
+                // Для POST запросов (execute-mission)
+                else
+                {
+                    var jsonCommand = JsonConvert.SerializeObject(command);
+                    var response = await _httpConnect.PostAsync(url, jsonCommand);
+                }
+                
                 _currentDroneUrl = drone.BaseUrl;
-
                 _logger.LogInformation($"Команда успешно отправлена на дрон: {drone.Name} ({url})");
 
                 return new DroneConnectionResult
@@ -89,7 +103,6 @@ public class DroneConnectionService : IDroneConnectionService
             }
         }
 
-        _logger.LogError("Не удалось отправить команду ни на один из Url");
         return new DroneConnectionResult
         {
             Success = false,
@@ -135,9 +148,9 @@ public class DroneConnectionService : IDroneConnectionService
     {
         var drones = new List<DroneConfig>
         {
-            new() { Name = "Основной url", BaseUrl = "http://78.25.108.95:8081", Priority = 1, IsActive = true },
-            new() { Name = "Резервный url 1", BaseUrl = "http://85.141.101.21:8081", Priority = 2, IsActive = true },
-            new() { Name = "Резервный url 2", BaseUrl = "http://192.168.1.100:8081", Priority = 3, IsActive = true }
+            new() { Name = "Основной url", BaseUrl = "http://78.25.108.95:8080", Priority = 1, IsActive = true },
+            new() { Name = "Резервный url 1", BaseUrl = "http://85.141.101.21:8080", Priority = 2, IsActive = true },
+            new() { Name = "Резервный url 2", BaseUrl = "http://192.168.1.100:8080", Priority = 3, IsActive = true }
         };
 
         return [.. drones.OrderBy(d => d.Priority)];
