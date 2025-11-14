@@ -7,9 +7,11 @@ using Colibri.Data.Helpers;
 using Colibri.Data.Services.Abstracts;
 using Colibri.WebApi.Models;
 using Colibri.WebApi.Services.Abstract;
+using Colibri.WebApi.WebSokets;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.VisualBasic;
 using Newtonsoft.Json;
 
 namespace Colibri.WebApi.Controllers
@@ -23,10 +25,12 @@ namespace Colibri.WebApi.Controllers
     /// <param name="http">Сервис телеметрии</param>
     /// <param name="missionPlanning">Сервис телеметрии</param>
     /// <param name="droneConnection">Сервис телеметрии</param>
+    /// <param name="webSocketHandler">Сервис вебсокетов</param>
     [Route("test")]
     [ApiController]
     public class TestController(ILoggerService logger, IFlightService flightServece, ITelemetryServices telemetry,
-     IHttpConnectService http, IMissionPlanningService missionPlanning, IDroneConnectionService droneConnection) : ControllerBase
+     IHttpConnectService http, IMissionPlanningService missionPlanning, IDroneConnectionService droneConnection,
+     DroneWebSocketHandler webSocketHandler) : ControllerBase
     {
         private readonly ILoggerService _logger = logger;
         private readonly IFlightService _flightServece = flightServece;
@@ -34,6 +38,7 @@ namespace Colibri.WebApi.Controllers
         private readonly IHttpConnectService _http = http;
         private readonly IMissionPlanningService _missionPlanning = missionPlanning;
         private readonly IDroneConnectionService _droneConnection = droneConnection;
+        private readonly DroneWebSocketHandler _webSocketHandler = webSocketHandler;
 
         /// <summary>
         /// Тестовый метод взлёта на определённую высоту
@@ -122,7 +127,7 @@ namespace Colibri.WebApi.Controllers
         /// <param name="latitude">Широта</param>
         /// <param name="longitude">Долгота</param>
         /// <returns>success - запрос выполнен, error - запрос не выполнен</returns>
-        
+
         [HttpPost("TestAutopilot")]
         public async Task<IActionResult> TestAutopilot(double latitude, double longitude)
         {
@@ -144,9 +149,9 @@ namespace Colibri.WebApi.Controllers
 
                 // Используем сервис для создания миссии
                 var mission = await _missionPlanning.CreateDeliveryMission(
-                    startPoint, 
-                    new GeoPoint { Latitude = latitude, Longitude = longitude, Altitude = 10 }, 
-                    cruiseSpeed: 15, 
+                    startPoint,
+                    new GeoPoint { Latitude = latitude, Longitude = longitude, Altitude = 10 },
+                    cruiseSpeed: 15,
                     altitude: 10);
 
                 // Логируем миссию
@@ -286,7 +291,7 @@ namespace Colibri.WebApi.Controllers
                 return Ok(new { status = "error", message = ex.Message });
             }
         }
-        
+
         [HttpGet("CheckDroneEndpoints")]
         public async Task<IActionResult> CheckDroneUrls()
         {
@@ -294,21 +299,22 @@ namespace Colibri.WebApi.Controllers
             var droneUrls = new[]
             {
                 "http://78.25.108.95:8080",
-                "http://78.25.108.95:8081", 
+                "http://78.25.108.95:8081",
                 "http://85.141.101.21:8080",
                 "http://85.141.101.21:8081"
             };
-            
+
             var results = new List<object>();
-            
+
             foreach (var url in droneUrls)
             {
                 try
                 {
                     // Пробуем отправить тестовый запрос
                     var result = await _droneConnection.SendCommandToDrone("api/health", new { });
-                    
-                    results.Add(new {
+
+                    results.Add(new
+                    {
                         url = url,
                         status = result.Success ? "available" : "unavailable",
                         active = result.DroneUrl == url
@@ -316,15 +322,56 @@ namespace Colibri.WebApi.Controllers
                 }
                 catch (Exception ex)
                 {
-                    results.Add(new {
+                    results.Add(new
+                    {
                         url = url,
                         status = "error",
                         error = ex.Message
                     });
                 }
             }
-            
+
             return Ok(results);
+        }
+
+        [HttpGet("status/{status}")]
+        public async Task<IActionResult> SendQuickStatus(string status)
+        {
+            var statusMap = new Dictionary<string, string>
+            {
+                ["preparing"] = "Дрон готовится к вылету",
+                ["flying"] = "Дрон вылетел и летит к точке назначения",
+                ["receiving_package"] = "Дрон получает груз",
+                ["returning"] = "Дрон возвращается на базу",
+                ["landed"] = "Дрон успешно приземлился",
+                ["error"] = "Произошла ошибка во время полета"
+            };
+
+            if (!statusMap.ContainsKey(status.ToLower()))
+            {
+                return BadRequest(new
+                {
+                    error = "", // ← ВОТ ЗДЕСЬ ПУСТАЯ СТРОКА! ДОБАВЬТЕ СООБЩЕНИЕ
+                    availableStatuses = statusMap.Keys
+                });
+            }
+            var message = statusMap[status.ToLower()];
+
+            await _webSocketHandler.BroadcastDroneStatus("drone-1", new
+            {
+                status = status.ToLower(),
+                message = message,
+                timestamp = DateTime.UtcNow,
+                isTest = true
+            });
+
+            return Ok(new
+            {
+                success = true,
+                status = status,
+                message = message,
+                timestamp = DateTime.UtcNow
+            });
         }
     }
 }

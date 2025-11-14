@@ -18,19 +18,23 @@ public class DroneWebSocketHandler
 
     public async Task HandleWebSocketConnection(HttpContext context)
     {
-        var webSokets = await context.WebSockets.AcceptWebSocketAsync();
+        Console.WriteLine($"🎯 WebSocket connection requested from: {context.Connection.RemoteIpAddress}");
+        
+        var webSocket = await context.WebSockets.AcceptWebSocketAsync();
         var connectionId = Guid.NewGuid().ToString();
 
-        _connection[connectionId] = webSokets;
+        _connection[connectionId] = webSocket;
+        Console.WriteLine($"✅ WebSocket подключен: {connectionId}, всего подключений: {_connection.Count}");
 
         try
         {
-            await HandleWebSocketMessages(webSokets, connectionId);
+            await HandleWebSocketMessages(webSocket, connectionId);
         }
         finally
         {
             _connection.TryRemove(connectionId, out _);
             RemoveSubscription(connectionId);
+            Console.WriteLine($"❌ WebSocket отключен: {connectionId}, осталось подключений: {_connection.Count}");
         }
     }
 
@@ -38,45 +42,79 @@ public class DroneWebSocketHandler
     {
         var buffer = new byte[1024 * 4];
 
-        while (webSocket.State == WebSocketState.Open)
+        try
         {
-            var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+            // Сразу отправляем приветственное сообщение
+            await SendToConnection(webSocket, new { 
+                type = "welcome", 
+                message = "Connected to drone WebSocket",
+                timestamp = DateTime.UtcNow
+            });
 
-            if (result.MessageType == WebSocketMessageType.Text)
+            while (webSocket.State == WebSocketState.Open)
             {
-                var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                var result = await webSocket.ReceiveAsync(
+                    new ArraySegment<byte>(buffer), 
+                    CancellationToken.None);
 
-                await ProcessClientMessage(message, connectionId);
-
+                if (result.MessageType == WebSocketMessageType.Text)
+                {
+                    var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    Console.WriteLine($"📨 Получено от клиента {connectionId}: {message}");
+                    await ProcessClientMessage(message, connectionId, webSocket);
+                }
+                else if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    Console.WriteLine($"🔒 Клиент {connectionId} закрыл соединение");
+                    break;
+                }
             }
-            else if (result.MessageType == WebSocketMessageType.Close)
-            {
-                await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
-                break;
-            }
+        }
+        catch (WebSocketException ex)
+        {
+            Console.WriteLine($"❌ WebSocket ошибка у {connectionId}: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Общая ошибка у {connectionId}: {ex.Message}");
         }
     }
 
-    private async Task ProcessClientMessage(string message, string connectionId)
+    private async Task ProcessClientMessage(string message, string connectionId, WebSocket webSocket)
     {
         try
         {
+            Console.WriteLine($"📨 Получено от клиента {connectionId}: {message}");
+            
             var messageObj = JsonSerializer.Deserialize<WebSocketMessage>(message);
 
-            if (messageObj.Type == "subscribe" && messageObj.DroneId != null)
+            if (messageObj?.Type == "subscribe")
             {
-                _droneSubscriptions[connectionId] = messageObj.DroneId;
-                await SendToConnect(connectionId, new { type = "subscribed", droneId = messageObj.DroneId });
+                var droneId = messageObj.DroneId ?? "drone-1";
+                _droneSubscriptions[connectionId] = droneId;
+                
+                Console.WriteLine($"✅ Клиент {connectionId} подписан на дрона: {droneId}, всего подписок: {_droneSubscriptions.Count}");
+                
+                // ОТПРАВЛЯЕМ ПОДТВЕРЖДЕНИЕ ПОДПИСКИ
+                await SendToConnection(webSocket, new { 
+                    type = "subscribed", 
+                    droneId = droneId,
+                    message = "Successfully subscribed to drone updates",
+                    timestamp = DateTime.UtcNow
+                });
+                
+                Console.WriteLine($"📤 Отправлено подтверждение подписки клиенту {connectionId}");
             }
-            else if (messageObj.Type == "unsubscribe")
+            else if (messageObj?.Type == "unsubscribe")
             {
                 RemoveSubscription(connectionId);
-                await SendToConnect(connectionId, new { type = "unsubscribed" });
+                await SendToConnection(webSocket, new { type = "unsubscribed" });
             }
         }
         catch (Exception ex)
         {
-            await SendToConnect(connectionId, new { type = "error", message = ex.Message });
+            Console.WriteLine($"❌ Ошибка обработки сообщения: {ex}");
+            await SendToConnection(webSocket, new { type = "error", message = ex.Message });
         }
     }
 
@@ -85,13 +123,25 @@ public class DroneWebSocketHandler
         _droneSubscriptions.TryRemove(connectionId, out _);
     }
 
-    private async Task SendToConnect(string connectionId, object message)
+    private async Task SendToConnection(WebSocket webSocket, object message)
     {
-        if (_connection.TryGetValue(connectionId, out var webSoket) && webSoket.State == WebSocketState.Open)
+        if (webSocket.State == WebSocketState.Open)
         {
-            var jsonMessage = JsonSerializer.Serialize(message);
-            var buffer = Encoding.UTF8.GetBytes(jsonMessage);
-            await webSoket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
+            try
+            {
+                var jsonMessage = JsonSerializer.Serialize(message);
+                var buffer = Encoding.UTF8.GetBytes(jsonMessage);
+                await webSocket.SendAsync(
+                    new ArraySegment<byte>(buffer), 
+                    WebSocketMessageType.Text, 
+                    true, 
+                    CancellationToken.None);
+                Console.WriteLine($"📤 Отправлено клиенту: {jsonMessage}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка отправки сообщения: {ex.Message}");
+            }
         }
     }
 
@@ -103,21 +153,59 @@ public class DroneWebSocketHandler
             type = "status_update",
             droneId = droneId,
             data = statusUpdate,
-            timeSpan = DateTime.UtcNow
+            timestamp = DateTime.UtcNow
         };
 
         var tasks = new List<Task>();
+        int sentCount = 0;
+
+        Console.WriteLine($"🚀 Отправка статуса для дрона {droneId}, подписчиков: {_droneSubscriptions.Count}");
 
         foreach (var subscription in _droneSubscriptions)
         {
-            if (subscription.Value == droneId && _connection.TryGetValue(subscription.Key, out var webSoket))
+            if (subscription.Value == droneId && _connection.TryGetValue(subscription.Key, out var webSocket))
             {
-                if (webSoket.State == WebSocketState.Open)
+                if (webSocket.State == WebSocketState.Open)
                 {
-                    tasks.Add(SendToConnect(subscription.Key, message));
+                    tasks.Add(SendToConnection(webSocket, message));
+                    sentCount++;
+                    Console.WriteLine($"📨 Отправка подключению: {subscription.Key}");
+                }
+                else
+                {
+                    Console.WriteLine($"⚠️ WebSocket {subscription.Key} не подключен");
                 }
             }
         }
-        await Task.WhenAll(tasks);
+
+        if (tasks.Count > 0)
+        {
+            await Task.WhenAll(tasks);
+            Console.WriteLine($"✅ Статус отправлен {sentCount} клиентам");
+        }
+        else
+        {
+            Console.WriteLine($"⚠️ Нет активных подписчиков для дрона {droneId}");
+        }
     }
+
+    public async Task SendTestStatus(string droneId, string status, string message)
+    {
+        var statusUpdate = new
+        {
+            status = status,
+            message = message,
+            timestamp = DateTime.UtcNow,
+            isTest = true
+        };
+
+        await BroadcastDroneStatus(droneId, statusUpdate);
+    }
+}
+
+// ДОБАВЬТЕ ЭТОТ КЛАСС - он отсутствует!
+public class WebSocketMessage
+{
+    public string Type { get; set; }
+    public string DroneId { get; set; }
 }

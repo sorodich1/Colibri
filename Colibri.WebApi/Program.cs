@@ -44,21 +44,23 @@ namespace Colibri.WebApi
 
                 app.UseWebSockets();
 
-                app.UseRouting();
-                app.UseAuthentication();
-                app.UseAuthorization();
-
                 app.Use(async (context, next) =>
                 {
+                    Console.WriteLine($"📨 Request: {context.Request.Method} {context.Request.Path}");
+                    
                     if (context.Request.Path == "/ws/drone")
                     {
+                        Console.WriteLine("🎯 WebSocket route matched!");
+                        
                         if (context.WebSockets.IsWebSocketRequest)
                         {
+                            Console.WriteLine("🔌 WebSocket request detected");
                             var webSocketHandler = context.RequestServices.GetRequiredService<DroneWebSocketHandler>();
                             await webSocketHandler.HandleWebSocketConnection(context);
                         }
                         else
                         {
+                            Console.WriteLine("❌ Not a WebSocket request");
                             context.Response.StatusCode = 400;
                         }
                     }
@@ -67,6 +69,11 @@ namespace Colibri.WebApi
                         await next();
                     }
                 });
+
+                app.UseRouting();
+
+                app.UseAuthentication();
+                app.UseAuthorization();
 
                 app.MapControllers();
 

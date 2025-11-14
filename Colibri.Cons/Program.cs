@@ -5,7 +5,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace WebSocketTester
+namespace Colibri.Cons
 {
     class Program
     {
@@ -17,9 +17,8 @@ namespace WebSocketTester
             Console.WriteLine("🔌 WebSocket Drone Status Tester");
             Console.WriteLine("=================================");
             
-            // Настройки подключения
-            var serverUrl = "ws://localhost:5000/ws/drone"; // Измените на ваш URL
-            var droneId = "drone-1"; // Или любой другой идентификатор
+            var serverUrl = "ws://localhost:5000/ws/drone";
+            var droneId = "drone-1";
 
             try
             {
@@ -29,6 +28,7 @@ namespace WebSocketTester
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Ошибка: {ex.Message}");
+                Console.WriteLine($"🔍 Детали: {ex}");
             }
             finally
             {
@@ -45,20 +45,35 @@ namespace WebSocketTester
             
             Console.WriteLine($"🔄 Подключаемся к {url}...");
             
-            await _webSocket.ConnectAsync(new Uri(url), CancellationToken.None);
-            _isConnected = true;
+            // Добавляем таймаут подключения
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             
-            Console.WriteLine("✅ Подключение установлено!");
-
-            // Подписываемся на дрона
-            var subscribeMessage = new
+            try
             {
-                type = "subscribe",
-                droneId = droneId
-            };
+                await _webSocket.ConnectAsync(new Uri(url), cts.Token);
+                _isConnected = true;
+                Console.WriteLine("✅ Подключение установлено!");
 
-            await SendMessage(JsonSerializer.Serialize(subscribeMessage));
-            Console.WriteLine($"📨 Отправлена подписка на дрона: {droneId}");
+                // Подписываемся на дрона
+                var subscribeMessage = new
+                {
+                    type = "subscribe",
+                    droneId = droneId
+                };
+
+                await SendMessage(JsonSerializer.Serialize(subscribeMessage));
+                Console.WriteLine($"📨 Отправлена подписка на дрона: {droneId}");
+            }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("❌ Таймаут подключения (5 секунд)");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка подключения: {ex.Message}");
+                throw;
+            }
         }
 
         static async Task SendMessage(string message)
@@ -69,12 +84,19 @@ namespace WebSocketTester
                 return;
             }
 
-            var buffer = Encoding.UTF8.GetBytes(message);
-            await _webSocket.SendAsync(
-                new ArraySegment<byte>(buffer),
-                WebSocketMessageType.Text,
-                true,
-                CancellationToken.None);
+            try
+            {
+                var buffer = Encoding.UTF8.GetBytes(message);
+                await _webSocket.SendAsync(
+                    new ArraySegment<byte>(buffer),
+                    WebSocketMessageType.Text,
+                    true,
+                    CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Ошибка отправки сообщения: {ex.Message}");
+            }
         }
 
         static async Task ReceiveMessages()
@@ -86,7 +108,6 @@ namespace WebSocketTester
 
             while (_isConnected && _webSocket.State == WebSocketState.Open)
             {
-                // Проверяем нажатие клавиш без блокировки
                 if (Console.KeyAvailable)
                 {
                     var key = Console.ReadKey(intercept: true);
@@ -99,9 +120,10 @@ namespace WebSocketTester
 
                 try
                 {
+                    // УБЕРИТЕ ТАЙМАУТ - используем CancellationToken.None
                     var result = await _webSocket.ReceiveAsync(
                         new ArraySegment<byte>(buffer),
-                        CancellationToken.None);
+                        CancellationToken.None); // ИЗМЕНЕНО: убран таймаут
 
                     if (result.MessageType == WebSocketMessageType.Text)
                     {
@@ -119,12 +141,15 @@ namespace WebSocketTester
                     Console.WriteLine($"❌ WebSocket ошибка: {ex.Message}");
                     break;
                 }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Неожиданная ошибка: {ex.Message}");
+                    break;
+                }
 
-                // Небольшая задержка чтобы не грузить CPU
                 await Task.Delay(100);
             }
         }
-
         static void ProcessMessage(string jsonMessage)
         {
             try
