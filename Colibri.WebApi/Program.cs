@@ -1,4 +1,5 @@
 using Colibri.WebApi.ConfigureService;
+using Colibri.WebApi.WebSokets;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
@@ -37,11 +38,35 @@ namespace Colibri.WebApi
 
                 builder.Services.AddControllers();
 
+                builder.Services.AddSingleton<DroneWebSocketHandler>();
+
                 var app = builder.Build();
+
+                app.UseWebSockets();
 
                 app.UseRouting();
                 app.UseAuthentication();
                 app.UseAuthorization();
+
+                app.Use(async (context, next) =>
+                {
+                    if (context.Request.Path == "/ws/drone")
+                    {
+                        if (context.WebSockets.IsWebSocketRequest)
+                        {
+                            var webSocketHandler = context.RequestServices.GetRequiredService<DroneWebSocketHandler>();
+                            await webSocketHandler.HandleWebSocketConnection(context);
+                        }
+                        else
+                        {
+                            context.Response.StatusCode = 400;
+                        }
+                    }
+                    else
+                    {
+                        await next();
+                    }
+                });
 
                 app.MapControllers();
 
