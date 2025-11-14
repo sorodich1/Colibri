@@ -45,14 +45,10 @@ namespace Colibri.WebApi
 
                 app.MapControllers();
 
-                app.UseSwagger(c =>
-                {
-                    c.RouteTemplate = "swagger/{documentName}/swagger.json";
-                });
-
+                app.UseSwagger(); // Без кастомных настроек
                 app.UseSwaggerUI(c =>
                 {
-                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Microservice API 1.2.1");
+                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "API V1");
                 });
 
                 app.Run();

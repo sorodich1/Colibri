@@ -98,6 +98,17 @@ namespace Colibri.WebApi.Controllers
             {
                 _logger.LogMessage(User, $"Выбран цвет с номером {colorNumber}", LogLevel.Information);
 
+                EventRegistration registration = new()
+                {
+                    EventId = 1,
+                    IsActive = false,
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now,
+                    IsDeleted = false
+                };
+
+                await _flightServece.AddEventRegistration(registration);
+
                 // Отправляем команду на дрон для управления светодиодами
                 var result = await _droneConnection.SendCommandToDrone("api/led/control", colorNumber.ToString());
 
@@ -131,7 +142,7 @@ namespace Colibri.WebApi.Controllers
                 _logger.LogMessage(User, $"Тестируется полёт по координатам широта - {latitude}, долгота - {longitude}", LogLevel.Information);
 
                 // Получаем текущий активный дрон
-                var activeDroneUrl = await _droneConnection.GetActiveDroneUrl();
+                var activeDroneUrl = "http://85.141.101.21:8080"; // await _droneConnection.GetActiveDroneUrl();
                 if (string.IsNullOrEmpty(activeDroneUrl))
                 {
                     _logger.LogMessage(User, "Нет доступных дронов для подключения", LogLevel.Error);
@@ -286,7 +297,7 @@ namespace Colibri.WebApi.Controllers
                 return Ok(new { status = "error", message = ex.Message });
             }
         }
-        
+
         [HttpGet("CheckDroneEndpoints")]
         public async Task<IActionResult> CheckDroneUrls()
         {
@@ -294,21 +305,22 @@ namespace Colibri.WebApi.Controllers
             var droneUrls = new[]
             {
                 "http://78.25.108.95:8080",
-                "http://78.25.108.95:8081", 
+                "http://78.25.108.95:8081",
                 "http://85.141.101.21:8080",
                 "http://85.141.101.21:8081"
             };
-            
+
             var results = new List<object>();
-            
+
             foreach (var url in droneUrls)
             {
                 try
                 {
                     // Пробуем отправить тестовый запрос
                     var result = await _droneConnection.SendCommandToDrone("api/health", new { });
-                    
-                    results.Add(new {
+
+                    results.Add(new
+                    {
                         url = url,
                         status = result.Success ? "available" : "unavailable",
                         active = result.DroneUrl == url
@@ -316,15 +328,59 @@ namespace Colibri.WebApi.Controllers
                 }
                 catch (Exception ex)
                 {
-                    results.Add(new {
+                    results.Add(new
+                    {
                         url = url,
                         status = "error",
                         error = ex.Message
                     });
                 }
             }
-            
+
             return Ok(results);
         }
+        [HttpGet]
+        public async Task<IActionResult> GetDronePosition()
+        {
+            try
+            {
+                // Получаем URL дрона
+                var droneUrl = "http://85.141.101.21:8080"; // await _droneConnection.GetActiveDroneUrl();
+                if (string.IsNullOrEmpty(droneUrl))
+                {
+                    return Ok(new
+                    {
+                        error = "Дрон недоступен",
+                        latitude = 0,
+                        longitude = 0,
+                        altitude = 0
+                    });
+                }
+
+                // Получаем позицию дрона
+                var dronePosition = await _missionPlanning.GetCurrentDronePosition(droneUrl);
+
+                return Ok(new
+                {
+                    latitude = dronePosition.Position.Latitude,
+                    longitude = dronePosition.Position.Longitude,
+                    altitude = dronePosition.Position.Altitude,
+                    status = dronePosition.Status
+                });
+            }
+            catch
+            {
+                // Возвращаем заглушку при ошибке
+                return Ok(new
+                {
+                    latitude = 0,
+                    longitude = 0,
+                    altitude = 0,
+                    battery = 0,
+                    status = "error"
+                });
+            }
+        }
+        
     }
 }

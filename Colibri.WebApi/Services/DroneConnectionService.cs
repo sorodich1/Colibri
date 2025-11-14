@@ -148,9 +148,8 @@ public class DroneConnectionService : IDroneConnectionService
     {
         var drones = new List<DroneConfig>
         {
-            new() { Name = "Основной url", BaseUrl = "http://78.25.108.95:8080", Priority = 1, IsActive = true },
-            new() { Name = "Резервный url 1", BaseUrl = "http://85.141.101.21:8080", Priority = 2, IsActive = true },
-            new() { Name = "Резервный url 2", BaseUrl = "http://192.168.1.100:8080", Priority = 3, IsActive = true }
+            new() { Name = "Основной url", BaseUrl = "http://85.141.101.21:8080", Priority = 1, IsActive = true },
+            new() { Name = "Резервный url 1", BaseUrl = "http://85.141.101.21:8080", Priority = 2, IsActive = true }
         };
 
         return [.. drones.OrderBy(d => d.Priority)];
