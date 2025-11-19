@@ -172,24 +172,5 @@ namespace Colibri.WebApi.Controllers
 
             return Ok(new { status = "connected", drone = result.DroneUrl });
         }
-
-        /// <summary>
-        /// Переключение на следующий дрон
-        /// </summary>
-        [Authorize(Roles = "Admin")]
-        [HttpPost("switch-drone")]
-        public async Task<IActionResult> SwitchDrone()
-        {
-            try
-            {
-                await _droneConnection.SwitchToNextDrone();
-                var activeUrl = await _droneConnection.GetActiveDroneUrl();
-                return Ok(new { message = "Дрон переключен", activeDrone = activeUrl });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(503, new { error = ex.Message });
-            }
-        }
     }
 }

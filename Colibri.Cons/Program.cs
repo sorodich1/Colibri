@@ -5,7 +5,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Colibri.Cons
+namespace WebSocketTester
 {
     class Program
     {
@@ -17,18 +17,25 @@ namespace Colibri.Cons
             Console.WriteLine("🔌 WebSocket Drone Status Tester");
             Console.WriteLine("=================================");
             
-            var serverUrl = "ws://localhost:5000/ws/drone";
+            var serverUrl = "ws://81.3.182.146/ws/drone";
             var droneId = "drone-1";
 
             try
             {
+                // Обработка Ctrl+C
+                Console.CancelKeyPress += (sender, e) =>
+                {
+                    e.Cancel = true;
+                    Console.WriteLine("\n🛑 Получен сигнал Ctrl+C, завершаем работу...");
+                    _isConnected = false;
+                };
+
                 await ConnectToWebSocket(serverUrl, droneId);
                 await ReceiveMessages();
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Ошибка: {ex.Message}");
-                Console.WriteLine($"🔍 Детали: {ex}");
             }
             finally
             {
@@ -45,12 +52,9 @@ namespace Colibri.Cons
             
             Console.WriteLine($"🔄 Подключаемся к {url}...");
             
-            // Добавляем таймаут подключения
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            
             try
             {
-                await _webSocket.ConnectAsync(new Uri(url), cts.Token);
+                await _webSocket.ConnectAsync(new Uri(url), CancellationToken.None);
                 _isConnected = true;
                 Console.WriteLine("✅ Подключение установлено!");
 
@@ -63,11 +67,6 @@ namespace Colibri.Cons
 
                 await SendMessage(JsonSerializer.Serialize(subscribeMessage));
                 Console.WriteLine($"📨 Отправлена подписка на дрона: {droneId}");
-            }
-            catch (OperationCanceledException)
-            {
-                Console.WriteLine("❌ Таймаут подключения (5 секунд)");
-                throw;
             }
             catch (Exception ex)
             {
@@ -104,52 +103,44 @@ namespace Colibri.Cons
             var buffer = new byte[4096];
             
             Console.WriteLine("\n🎯 Ожидаем сообщения от сервера...");
-            Console.WriteLine("Нажмите 'q' для выхода\n");
+            Console.WriteLine("Нажмите Ctrl+C для выхода\n");
 
-            while (_isConnected && _webSocket.State == WebSocketState.Open)
+            try
             {
-                if (Console.KeyAvailable)
+                while (_isConnected && _webSocket.State == WebSocketState.Open)
                 {
-                    var key = Console.ReadKey(intercept: true);
-                    if (key.KeyChar == 'q' || key.KeyChar == 'Q')
+                    try
                     {
-                        Console.WriteLine("\n🛑 Завершение работы...");
+                        var result = await _webSocket.ReceiveAsync(
+                            new ArraySegment<byte>(buffer),
+                            CancellationToken.None);
+
+                        if (result.MessageType == WebSocketMessageType.Text)
+                        {
+                            var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                            ProcessMessage(message);
+                        }
+                        else if (result.MessageType == WebSocketMessageType.Close)
+                        {
+                            Console.WriteLine("🔒 Сервер закрыл соединение");
+                            break;
+                        }
+                    }
+                    catch (WebSocketException ex)
+                    {
+                        Console.WriteLine($"❌ WebSocket ошибка: {ex.Message}");
                         break;
                     }
-                }
 
-                try
-                {
-                    // УБЕРИТЕ ТАЙМАУТ - используем CancellationToken.None
-                    var result = await _webSocket.ReceiveAsync(
-                        new ArraySegment<byte>(buffer),
-                        CancellationToken.None); // ИЗМЕНЕНО: убран таймаут
-
-                    if (result.MessageType == WebSocketMessageType.Text)
-                    {
-                        var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                        ProcessMessage(message);
-                    }
-                    else if (result.MessageType == WebSocketMessageType.Close)
-                    {
-                        Console.WriteLine("🔒 Сервер закрыл соединение");
-                        break;
-                    }
+                    await Task.Delay(100);
                 }
-                catch (WebSocketException ex)
-                {
-                    Console.WriteLine($"❌ WebSocket ошибка: {ex.Message}");
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"❌ Неожиданная ошибка: {ex.Message}");
-                    break;
-                }
-
-                await Task.Delay(100);
+            }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("⏹️ Получение сообщений отменено");
             }
         }
+
         static void ProcessMessage(string jsonMessage)
         {
             try
@@ -161,6 +152,12 @@ namespace Colibri.Cons
                 
                 switch (messageType)
                 {
+                    case "welcome":
+                        Console.ForegroundColor = ConsoleColor.Cyan;
+                        Console.WriteLine("🔌 Подключение к WebSocket установлено");
+                        Console.ResetColor();
+                        break;
+
                     case "status_update":
                         var data = document.RootElement.GetProperty("data");
                         var status = data.GetProperty("status").GetString();
@@ -222,16 +219,26 @@ namespace Colibri.Cons
         {
             if (_webSocket != null)
             {
-                if (_webSocket.State == WebSocketState.Open)
+                try
                 {
-                    await _webSocket.CloseAsync(
-                        WebSocketCloseStatus.NormalClosure,
-                        "Закрыто клиентом",
-                        CancellationToken.None);
+                    if (_webSocket.State == WebSocketState.Open)
+                    {
+                        await _webSocket.CloseAsync(
+                            WebSocketCloseStatus.NormalClosure,
+                            "Закрыто клиентом",
+                            CancellationToken.None);
+                    }
                 }
-                _webSocket.Dispose();
-                _isConnected = false;
-                Console.WriteLine("🔌 Соединение закрыто");
+                catch (WebSocketException ex)
+                {
+                    Console.WriteLine($"⚠️ Ошибка при закрытии WebSocket: {ex.Message}");
+                }
+                finally
+                {
+                    _webSocket.Dispose();
+                    _isConnected = false;
+                    Console.WriteLine("🔌 Соединение закрыто");
+                }
             }
         }
     }

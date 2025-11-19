@@ -6,7 +6,6 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Colibri.WebApi.Models;
 using Microsoft.AspNetCore.Http;
 
 namespace Colibri.WebApi.WebSokets;
@@ -86,35 +85,67 @@ public class DroneWebSocketHandler
         {
             Console.WriteLine($"📨 Получено от клиента {connectionId}: {message}");
             
-            var messageObj = JsonSerializer.Deserialize<WebSocketMessage>(message);
-
-            if (messageObj?.Type == "subscribe")
+            // Детальная десериализация с проверкой
+            WebSocketMessage messageObj = null;
+            try
             {
-                var droneId = messageObj.DroneId ?? "drone-1";
+                messageObj = JsonSerializer.Deserialize<WebSocketMessage>(message);
+                Console.WriteLine($"🔍 Десериализовано: Type='{messageObj?.type}', DroneId='{messageObj?.droneId}'");
+            }
+            catch (JsonException jsonEx)
+            {
+                Console.WriteLine($"❌ Ошибка JSON десериализации: {jsonEx.Message}");
+                Console.WriteLine($"🔍 JSON который не удалось разобрать: {message}");
+                await SendToConnection(webSocket, new { type = "error", message = "Invalid JSON format" });
+                return;
+            }
+
+            if (messageObj?.type == "subscribe")
+            {
+                var droneId = messageObj.droneId ?? "drone-1";
+                Console.WriteLine($"🔍 Обработка подписки на дрона: {droneId}");
+                
                 _droneSubscriptions[connectionId] = droneId;
                 
                 Console.WriteLine($"✅ Клиент {connectionId} подписан на дрона: {droneId}, всего подписок: {_droneSubscriptions.Count}");
                 
                 // ОТПРАВЛЯЕМ ПОДТВЕРЖДЕНИЕ ПОДПИСКИ
-                await SendToConnection(webSocket, new { 
+                var response = new 
+                { 
                     type = "subscribed", 
                     droneId = droneId,
                     message = "Successfully subscribed to drone updates",
                     timestamp = DateTime.UtcNow
-                });
+                };
                 
-                Console.WriteLine($"📤 Отправлено подтверждение подписки клиенту {connectionId}");
+                Console.WriteLine($"📤 Пытаемся отправить подтверждение подписки...");
+                await SendToConnection(webSocket, response);
+                Console.WriteLine($"✅ Подтверждение подписки отправлено клиенту {connectionId}");
             }
-            else if (messageObj?.Type == "unsubscribe")
+            else if (messageObj?.type == "unsubscribe")
             {
                 RemoveSubscription(connectionId);
                 await SendToConnection(webSocket, new { type = "unsubscribed" });
             }
+            else
+            {
+                Console.WriteLine($"⚠️ Неизвестный тип сообщения: {messageObj?.type}");
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Ошибка обработки сообщения: {ex}");
-            await SendToConnection(webSocket, new { type = "error", message = ex.Message });
+            Console.WriteLine($"❌ КРИТИЧЕСКАЯ ОШИБКА в ProcessClientMessage:");
+            Console.WriteLine($"🔍 Сообщение: {ex.Message}");
+            Console.WriteLine($"🔍 StackTrace: {ex.StackTrace}");
+            
+            try
+            {
+                await SendToConnection(webSocket, new { type = "error", message = ex.Message });
+            }
+            catch (Exception sendEx)
+            {
+                Console.WriteLine($"🔥 Не удалось отправить сообщение об ошибке: {sendEx.Message}");
+            }
         }
     }
 
@@ -203,9 +234,8 @@ public class DroneWebSocketHandler
     }
 }
 
-// ДОБАВЬТЕ ЭТОТ КЛАСС - он отсутствует!
 public class WebSocketMessage
 {
-    public string Type { get; set; }
-    public string DroneId { get; set; }
+    public string type { get; set; }
+    public string droneId { get; set; }
 }
