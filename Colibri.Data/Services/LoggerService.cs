@@ -1,9 +1,12 @@
 ﻿using Colibri.Data.Context;
 using Colibri.Data.Entity;
 using Colibri.Data.Services.Abstracts;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Security.Claims;
 using System.Threading.Tasks;
@@ -34,6 +37,126 @@ namespace Colibri.Data.Services
             {
                 throw new InvalidOperationException("Ошибка сохранения телеметрии в базе данных", ex);
             }
+        }
+
+        public async Task ClearOldLogsAsync(DateTime olderThan)
+        {
+            var oldLogs = await _context.Logger
+                .Where(l => l.Timestamp < olderThan)
+                .ToListAsync();
+
+            _context.Logger.RemoveRange(oldLogs);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteLogAsync(int id)
+        {
+            var log = await _context.Logger.FindAsync(id);
+            if (log != null)
+            {
+                _context.Logger.Remove(log);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task DeleteLogsAsync(List<int> logIds)
+        {
+            if (logIds == null || logIds.Count == 0)
+                return;
+
+            var logsToDelete = await _context.Logger
+                .Where(l => logIds.Contains(l.Id))
+                .ToListAsync();
+            
+            if (logsToDelete.Count > 0)
+            {
+                _context.Logger.RemoveRange(logsToDelete);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task<Log> GetLogByIdAsync(int id)
+        {
+            return await _context.Logger
+                .AsNoTracking()
+                .FirstOrDefaultAsync(l => l.Id == id);
+        }
+
+        public async Task<List<string>> GetLogLevelsAsync()
+        {
+            return await _context.Logger
+                .Where(l => l.Level != null)
+                .Select(l => l.Level!)
+                .Distinct()
+                .OrderBy(l => l)
+                .ToListAsync();
+        }
+
+        public async Task<List<Log>> GetLogsAsync(int page = 1, int pageSize = 50, string level = null, DateTime? fromDate = null, DateTime? toDate = null, string search = null)
+        {
+            var query = _context.Logger.AsQueryable();
+
+            // Применяем фильтры
+            if (!string.IsNullOrEmpty(level))
+            {
+                query = query.Where(l => l.Level == level);
+            }
+
+            if (fromDate.HasValue)
+            {
+                query = query.Where(l => l.Timestamp >= fromDate.Value);
+            }
+
+            if (toDate.HasValue)
+            {
+                query = query.Where(l => l.Timestamp <= toDate.Value);
+            }
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                query = query.Where(l => 
+                    l.Message != null && l.Message.Contains(search) ||
+                    l.User != null && l.User.Contains(search) ||
+                    l.Logger != null && l.Logger.Contains(search));
+            }
+
+            // Сортировка и пагинация
+            return await query
+                .OrderByDescending(l => l.Timestamp)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
+        public async Task<int> GetTotalCountAsync(string level = null, DateTime? fromDate = null, DateTime? toDate = null, string search = null)
+        {
+            var query = _context.Logger.AsQueryable();
+
+            if (!string.IsNullOrEmpty(level))
+            {
+                query = query.Where(l => l.Level == level);
+            }
+
+            if (fromDate.HasValue)
+            {
+                query = query.Where(l => l.Timestamp >= fromDate.Value);
+            }
+
+            if (toDate.HasValue)
+            {
+                query = query.Where(l => l.Timestamp <= toDate.Value);
+            }
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                query = query.Where(l => 
+                    l.Message != null && l.Message.Contains(search) ||
+                    l.User != null && l.User.Contains(search) ||
+                    l.Logger != null && l.Logger.Contains(search));
+            }
+
+            return await query.CountAsync();
         }
 
         /// <summary>
