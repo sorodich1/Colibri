@@ -53,130 +53,130 @@ public class MissionPlanningService : IMissionPlanningService
         return await Task.FromResult(mission);
     }
 
-    // public async Task<DronePosition> GetCurrentDronePosition(string droneUrl)
-    // {
-    //     try
-    //     {
-    //         _logger.LogInformation($"Получаем позицию дрона с URL: {droneUrl}");
-
-    //         // Получаем реальные координаты с дрона через endpoint /get-position
-    //         var response = await _httpConnect.GetAsync($"{droneUrl}/get-position");
-            
-    //         if (!string.IsNullOrEmpty(response))
-    //         {
-    //             var positionData = JsonConvert.DeserializeObject<dynamic>(response);
-                
-    //             // Проверяем статус ответа
-    //             if (positionData.status == "success")
-    //             {
-    //                 _logger.LogInformation($"Получены реальные координаты: {positionData.latitude}, {positionData.longitude}");
-                    
-    //                 return new DronePosition
-    //                 {
-    //                     Position = new GeoPoint
-    //                     {
-    //                         Latitude = (double)positionData.latitude,
-    //                         Longitude = (double)positionData.longitude,
-    //                         Altitude = (double)positionData.altitude
-    //                     },
-    //                     Speed = 0,
-    //                     Course = 0,
-    //                     Satellites = positionData.satellites != null ? (int)positionData.satellites : 0,
-    //                     Timestamp = DateTime.UtcNow,
-    //                     Status = "Connected"
-    //                 };
-    //             }
-    //         }
-            
-    //         // Если не удалось получить реальные координаты - возвращаем ошибку
-    //         _logger.LogWarning($"Не удалось получить реальные координаты с дрона {droneUrl}");
-    //         return new DronePosition
-    //         {
-    //             Position = new GeoPoint
-    //             {
-    //                 Latitude = 0,
-    //                 Longitude = 0,
-    //                 Altitude = 0
-    //             },
-    //             Speed = 0,
-    //             Course = 0,
-    //             Satellites = 0,
-    //             Timestamp = DateTime.UtcNow,
-    //             Status = "Ошибка получения координат"
-    //         };
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         _logger.LogError($"Ошибка получения позиции дрона: {ex.Message}");
-            
-    //         // Возвращаем ошибку
-    //         return new DronePosition
-    //         {
-    //             Position = new GeoPoint
-    //             {
-    //                 Latitude = 0,
-    //                 Longitude = 0,
-    //                 Altitude = 0
-    //             },
-    //             Speed = 0,
-    //             Course = 0,
-    //             Satellites = 0,
-    //             Timestamp = DateTime.UtcNow,
-    //             Status = $"Ошибка: {ex.Message}"
-    //         };
-    //     }
-    // }
-
-
-
-
     public async Task<DronePosition> GetCurrentDronePosition(string droneUrl)
     {
         try
         {
             _logger.LogInformation($"Получаем позицию дрона с URL: {droneUrl}");
 
-            // ВРЕМЕННО: используем фиктивные координаты
-            var fakeLatitude = 59.886053; 
-            var fakeLongitude = 30.485970;
-            var fakeAltitude = 5.0;
+            // Получаем реальные координаты с дрона через endpoint /get-position
+            var response = await _httpConnect.GetAsync($"{droneUrl}/get-position");
             
-            _logger.LogInformation($"Используются фиктивные координаты: {fakeLatitude}, {fakeLongitude}, высота: {fakeAltitude}м");
+            if (!string.IsNullOrEmpty(response))
+            {
+                var positionData = JsonConvert.DeserializeObject<dynamic>(response);
+                
+                // Проверяем статус ответа
+                if (positionData.status == "success")
+                {
+                    _logger.LogInformation($"Получены реальные координаты: {positionData.latitude}, {positionData.longitude}");
+                    
+                    return new DronePosition
+                    {
+                        Position = new GeoPoint
+                        {
+                            Latitude = (double)positionData.latitude,
+                            Longitude = (double)positionData.longitude,
+                            Altitude = (double)positionData.altitude
+                        },
+                        Speed = 0,
+                        Course = 0,
+                        Satellites = positionData.satellites != null ? (int)positionData.satellites : 0,
+                        Timestamp = DateTime.UtcNow,
+                        Status = "Connected"
+                    };
+                }
+            }
             
+            // Если не удалось получить реальные координаты - возвращаем ошибку
+            _logger.LogWarning($"Не удалось получить реальные координаты с дрона {droneUrl}");
             return new DronePosition
             {
                 Position = new GeoPoint
                 {
-                    Latitude = fakeLatitude,
-                    Longitude = fakeLongitude,
-                    Altitude = fakeAltitude
+                    Latitude = 0,
+                    Longitude = 0,
+                    Altitude = 0
                 },
                 Speed = 0,
                 Course = 0,
-                Satellites = 12,
+                Satellites = 0,
                 Timestamp = DateTime.UtcNow,
-                Status = "Connected (Test Data)"
+                Status = "Ошибка получения координат"
             };
         }
         catch (Exception ex)
         {
             _logger.LogError($"Ошибка получения позиции дрона: {ex.Message}");
             
-            // Возвращаем фиктивные координаты даже при ошибке
+            // Возвращаем ошибку
             return new DronePosition
             {
                 Position = new GeoPoint
                 {
-                    Latitude = 59.934280,
-                    Longitude = 30.335098,
-                    Altitude = 5.0
+                    Latitude = 0,
+                    Longitude = 0,
+                    Altitude = 0
                 },
                 Speed = 0,
                 Course = 0,
-                Satellites = 12,
+                Satellites = 0,
                 Timestamp = DateTime.UtcNow,
-                Status = $"Error: {ex.Message}"
+                Status = $"Ошибка: {ex.Message}"
             };
         }
     }
+
+
+
+
+    // public async Task<DronePosition> GetCurrentDronePosition(string droneUrl)
+    // {
+    //     try
+    //     {
+    //         _logger.LogInformation($"Получаем позицию дрона с URL: {droneUrl}");
+
+    //         // ВРЕМЕННО: используем фиктивные координаты
+    //         var fakeLatitude = 59.886053; 
+    //         var fakeLongitude = 30.485970;
+    //         var fakeAltitude = 5.0;
+            
+    //         _logger.LogInformation($"Используются фиктивные координаты: {fakeLatitude}, {fakeLongitude}, высота: {fakeAltitude}м");
+            
+    //         return new DronePosition
+    //         {
+    //             Position = new GeoPoint
+    //             {
+    //                 Latitude = fakeLatitude,
+    //                 Longitude = fakeLongitude,
+    //                 Altitude = fakeAltitude
+    //             },
+    //             Speed = 0,
+    //             Course = 0,
+    //             Satellites = 12,
+    //             Timestamp = DateTime.UtcNow,
+    //             Status = "Connected (Test Data)"
+    //         };
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         _logger.LogError($"Ошибка получения позиции дрона: {ex.Message}");
+            
+    //         // Возвращаем фиктивные координаты даже при ошибке
+    //         return new DronePosition
+    //         {
+    //             Position = new GeoPoint
+    //             {
+    //                 Latitude = 59.934280,
+    //                 Longitude = 30.335098,
+    //                 Altitude = 5.0
+    //             },
+    //             Speed = 0,
+    //             Course = 0,
+    //             Satellites = 12,
+    //             Timestamp = DateTime.UtcNow,
+    //             Status = $"Error: {ex.Message}"
+    //         };
+    //     }
+    //}
 }

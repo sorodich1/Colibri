@@ -1,6 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
-using Colibri.ConnectNetwork.Services.Abstract;
 using Colibri.Data.Entity;
 using Colibri.Data.Helpers;
 using Colibri.Data.Services.Abstracts;
@@ -9,7 +10,6 @@ using Colibri.WebApi.Services.Abstract;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 
 namespace Colibri.WebApi.Controllers
 {
@@ -24,38 +24,38 @@ namespace Colibri.WebApi.Controllers
         private readonly IDroneConnectionService _droneConnection = droneConnection;
 
         // Базовый URL дрона
-        private const string DRONE_BASE_URL = "http://192.168.1.159:8080";
+        private const string DRONE_BASE_URL = "http://85.141.101.21:8080";
 
         /// <summary>
         /// Взлёт на определённую высоту
         /// </summary>
-        [Authorize]
         [HttpPost("SystemCheck")]
         public async Task<IActionResult> SystemCheck(bool isActive, int distance)
         {
             try
             {
-                EventRegistration registration = new()
+                // EventRegistration registration = new()
+                // {
+                //     EventId = 2,
+                //     IsActive = isActive,
+                //     CreatedAt = DateTime.Now,
+                //     UpdatedAt = DateTime.Now,
+                //     IsDeleted = false
+                // };
+
+                // await _flightServece.AddEventRegistration(registration);
+
+          
+
+                DroneCommand command = new()
                 {
-                    EventId = 2,
-                    IsActive = isActive,
-                    CreatedAt = DateTime.Now,
-                    UpdatedAt = DateTime.Now,
-                    IsDeleted = false
+                    Takeoff = isActive,
+                    Altitude = distance
                 };
 
-                await _flightServece.AddEventRegistration(registration);
+                string json = JsonSerializer.Serialize(command);
 
-                FlightCommand command = new()
-                {
-                    AltitudeMeters = distance,
-                    ShouldTakeoff = isActive,
-                    CommandId = Guid.NewGuid().ToString()
-                };
-
-                var json = JsonConvert.SerializeObject(command);
-
-                var result = await _droneConnection.SendCommandToDrone($"{DRONE_BASE_URL}/api/flight/command", json);
+                var result = await _droneConnection.SendCommandToDrone($"takeoff-land", command);
 
                 if (!result.Success)
                 {
@@ -203,5 +203,7 @@ namespace Colibri.WebApi.Controllers
                 _logger.LogMessage(User, $"Ошибка логирования тестовой миссии: {ex.Message}", LogLevel.Warning);
             }
         }
+
+
     }
 }

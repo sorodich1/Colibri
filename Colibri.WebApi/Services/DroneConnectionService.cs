@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Colibri.ConnectNetwork.Services.Abstract;
 using Colibri.WebApi.Models;
@@ -14,7 +15,7 @@ public class DroneConnectionService : IDroneConnectionService
     private readonly ILogger<DroneConnectionService> _logger;
 
     // Фиксированный URL дрона из контроллера
-    private const string DRONE_BASE_URL = "http://192.168.1.159:8080";
+    private const string DRONE_BASE_URL = "http://85.141.101.21:8080";
 
     public DroneConnectionService(IHttpConnectService httpConnect, ILogger<DroneConnectionService> logger)
     {
@@ -56,7 +57,9 @@ public class DroneConnectionService : IDroneConnectionService
             // Для POST запросов
             else
             {
-                var jsonCommand = JsonConvert.SerializeObject(command);
+               // var jsonCommand = JsonConvert.SerializeObject(command);
+                
+                string jsonCommand = System.Text.Json.JsonSerializer.Serialize(command);
                 response = await _httpConnect.PostAsync(url, jsonCommand);
                 
                 // ПРОВЕРЯЕМ ответ дрона
