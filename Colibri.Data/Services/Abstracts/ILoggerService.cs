@@ -1,6 +1,8 @@
 ﻿using Colibri.Data.Entity;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System;
+using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
@@ -27,5 +29,19 @@ namespace Colibri.Data.Services.Abstracts
         /// <param name="telemetry">Сущность телеметрии</param>
         /// <returns>Результат</returns>
         Task AddTelemetryAsync(Telemetry telemetry);
+
+        Task<List<Log>> GetLogsAsync(int page = 1, int pageSize = 50, string level = null, DateTime? fromDate = null, DateTime? toDate = null, string search = null);
+
+        Task<int> GetTotalCountAsync(string level = null, DateTime? fromDate = null, DateTime? toDate = null, string search = null);
+
+        Task<List<string>> GetLogLevelsAsync();
+
+        Task<Log> GetLogByIdAsync(int id);
+
+        Task ClearOldLogsAsync(DateTime olderThan);
+
+        Task DeleteLogsAsync(List<int> logIds);
+
+        Task DeleteLogAsync(int id);
     }
 }

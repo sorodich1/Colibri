@@ -40,6 +40,8 @@ namespace Colibri.WebApi
 
                 builder.Services.AddSingleton<DroneWebSocketHandler>();
 
+                builder.Services.AddControllersWithViews();
+
                 var app = builder.Build();
 
                 app.UseWebSockets();
