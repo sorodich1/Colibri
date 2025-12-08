@@ -42,6 +42,10 @@ namespace Colibri.Data.Services.Abstracts
 
         Task DeleteLogsAsync(List<int> logIds);
 
-        Task DeleteLogAsync(int id);
+        Task<bool> DeleteLogAsync(int id);
+
+        Task<List<Log>> GetRecentLogsAsync(int count = 10);
+
+        Task<int> GetUnreadLogsCountAsync(string level = null);
     }
 }

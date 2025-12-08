@@ -11,37 +11,37 @@ public class TelemetryData
     /// 
     /// </summary>
     [JsonPropertyName("latitude")]
-    public decimal Latitude { get; set; }
+    public double Latitude { get; set; }
 
     /// <summary>
     /// 
     /// </summary>
     [JsonPropertyName("longitude")]
-    public decimal Longitude { get; set; }
+    public double Longitude { get; set; }
 
     /// <summary>
     /// 
     /// </summary>
     [JsonPropertyName("altitude")]
-    public decimal Altitude { get; set; }
+    public double Altitude { get; set; }
 
     /// <summary>
     /// 
     /// </summary>
     [JsonPropertyName("relativeAltitude")]
-    public decimal RelativeAltitude { get; set; }
+    public double RelativeAltitude { get; set; }
 
     /// <summary>
     /// 
     /// </summary>
     [JsonPropertyName("batteryVoltage")]
-    public decimal BatteryVoltage { get; set; }
+    public double BatteryVoltage { get; set; }
 
     /// <summary>
     /// 
     /// </summary>
     [JsonPropertyName("batteryPercentage")]
-    public decimal BatteryPercentage { get; set; }
+    public double BatteryPercentage { get; set; }
 
     /// <summary>
     /// 

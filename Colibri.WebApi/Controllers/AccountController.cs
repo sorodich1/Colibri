@@ -4,9 +4,12 @@ using Colibri.Data.Services.Abstracts;
 using Colibri.WebApi.Models;
 using Colibri.WebApi.Services.Abstract;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Colibri.WebApi.Controllers
@@ -16,11 +19,12 @@ namespace Colibri.WebApi.Controllers
     /// </summary>
     [Route("account")]
     [ApiController]
-    public class AccountController(IAccountService account, IJwtGenerator jwtGenerator, ILoggerService logger) : Controller
+    public class AccountController(IAccountService account, IJwtGenerator jwtGenerator, ILoggerService logger, UserManager<User> manager) : Controller
     {
         private readonly IAccountService _account = account;
         private readonly ILoggerService _logger = logger;
         private readonly IJwtGenerator _jwtGenerator = jwtGenerator;
+        private readonly UserManager<User> _manager = manager;
         /// <summary>
         /// Регистрирует нового пользователя с указанными данными.
         /// </summary>
@@ -253,6 +257,150 @@ namespace Colibri.WebApi.Controllers
             {
                 _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
                 return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
+            }
+        }
+
+        [HttpGet("")]
+        public async Task<IActionResult> Index()
+        {
+            try
+            {
+                var users = await _account.GetUsersAsync();
+
+                var userViewModels = new List<UserModel>();
+        
+                foreach (var user in users)
+                {
+                    var roles = await _account.GetRolsAsync();
+                    
+                    var userViewModel = new UserModel
+                    {
+                        UserName = user.UserName,
+                        Email = user.Email,
+                        FirstName = user.FirstName,
+                        LastName = user.LastName,
+                        SurName = user.SurName,
+                        LastLogin = user.LastLogin,
+                        EmailConfirmed = user.EmailConfirmed,
+                        PhoneNumberConfirmed = user.PhoneNumberConfirmed,
+                        TwoFactorEnabled = user.TwoFactorEnabled,
+                        LockoutEnabled = user.LockoutEnabled,
+                        AccessFailedCount = user.AccessFailedCount,
+                        Roles = [.. roles.Select(x => x.Name)]
+                    };
+                    
+                    userViewModels.Add(userViewModel);
+                }
+
+                return View(userViewModels);
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Ошибка загрузки пользователей: {ex.Message}";
+                return View(new System.Collections.Generic.List<UserModel>());
+            }
+        }
+
+        [HttpGet("details/{id}")]
+        public async Task<IActionResult> Details(string id)
+        {
+            try
+            {
+                var user = await _account.GetByIdUserAsync(Guid.Parse(id));
+                if (user == null)
+                {
+                    return NotFound();
+                }
+                
+                var roles = await _account.GetUserRolesAsync(user);
+                
+                var viewModel = new UserModel
+                {
+                    UserName = user.UserName,
+                    Email = user.Email,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    SurName = user.SurName,
+                    LastLogin = user.LastLogin,
+                    EmailConfirmed = user.EmailConfirmed,
+                    PhoneNumberConfirmed = user.PhoneNumberConfirmed,
+                    TwoFactorEnabled = user.TwoFactorEnabled,
+                    LockoutEnabled = user.LockoutEnabled,
+                    AccessFailedCount = user.AccessFailedCount,
+                    Roles = roles
+                };
+                
+                return View(viewModel);
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Ошибка загрузки данных пользователя: {ex.Message}";
+                return RedirectToAction("Index");
+            }
+        }
+        
+        [HttpPost("toggle-lock/{id}")]
+        public async Task<IActionResult> ToggleLock(string id)
+        {
+            try
+            {
+                var user = await _account.GetByIdUserAsync(Guid.Parse(id));
+                if (user == null)
+                {
+                    return NotFound();
+                }
+                
+                user.LockoutEnabled = !user.LockoutEnabled;
+                var result = await _account.UpdateUserAsync(user);
+                
+                if (result)
+                {
+                    TempData["Success"] = $"Статус блокировки пользователя {user.UserName} изменен";
+                }
+                else
+                {
+                    TempData["Error"] = $"Не удалось изменить статус блокировки";
+                }
+                
+                return RedirectToAction("Index");
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Ошибка изменения статуса блокировки: {ex.Message}";
+                return RedirectToAction("Index");
+            }
+        }
+
+        [HttpPost("reset-password/{id}")]
+        public async Task<IActionResult> ResetPassword(string id, string newPassword)
+        {
+            try
+            {
+                var user = await _account.GetByIdUserAsync(Guid.Parse(id));
+                if (user == null)
+                {
+                    return NotFound();
+                }
+                
+                var roles = await _account.GetUserRolesAsync(user);
+                var token = _jwtGenerator.Seed(user.UserName, roles);
+                var result = await _manager.ResetPasswordAsync(user, token, newPassword);
+                
+                if (result.Succeeded)
+                {
+                    TempData["Success"] = $"Пароль пользователя {user.UserName} успешно сброшен";
+                }
+                else
+                {
+                    TempData["Error"] = $"Не удалось сбросить пароль";
+                }
+                
+                return RedirectToAction("Details", new { id });
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Ошибка сброса пароля: {ex.Message}";
+                return RedirectToAction("Details", new { id });
             }
         }
     }

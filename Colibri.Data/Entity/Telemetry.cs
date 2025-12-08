@@ -10,27 +10,27 @@ public class Telemetry : AudiTable
     /// <summary>
     /// Широта
     /// </summary>
-    public decimal Latitude {get; set; }
+    public double Latitude {get; set; }
     /// <summary>
     /// Долгота
     /// </summary>
-    public decimal Longitude {get; set; }
+    public double Longitude {get; set; }
     /// <summary>
     /// Высота
     /// </summary>
-    public decimal Altitude {get; set; }
+    public double Altitude {get; set; }
     /// <summary>
     /// Относительная высота
     /// </summary>
-    public decimal RelativeAltitude {get; set; }
+    public double RelativeAltitude {get; set; }
     /// <summary>
     /// Напряжение батареи
     /// </summary>
-    public decimal BatteryVoltage {get; set; }
+    public double BatteryVoltage {get; set; }
     /// <summary>
     /// Процент заряда батареи
     /// </summary>
-    public decimal BatteryPercentage {get; set; }
+    public double BatteryPercentage {get; set; }
     /// <summary>
     /// Колибровка гироскопа
     /// </summary>

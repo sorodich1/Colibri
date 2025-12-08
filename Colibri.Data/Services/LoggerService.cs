@@ -49,13 +49,18 @@ namespace Colibri.Data.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task DeleteLogAsync(int id)
+        public async Task<bool> DeleteLogAsync(int id)
         {
             var log = await _context.Logger.FindAsync(id);
             if (log != null)
             {
                 _context.Logger.Remove(log);
                 await _context.SaveChangesAsync();
+                return true;
+            }
+            else
+            {
+                return false;
             }
         }
 
@@ -129,6 +134,15 @@ namespace Colibri.Data.Services
                 .ToListAsync();
         }
 
+        public async Task<List<Log>> GetRecentLogsAsync(int count = 10)
+        {
+            return await _context.Logger
+                .OrderByDescending(l => l.Timestamp)
+                .Take(count)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
         public async Task<int> GetTotalCountAsync(string level = null, DateTime? fromDate = null, DateTime? toDate = null, string search = null)
         {
             var query = _context.Logger.AsQueryable();
@@ -156,6 +170,18 @@ namespace Colibri.Data.Services
                     l.Logger != null && l.Logger.Contains(search));
             }
 
+            return await query.CountAsync();
+        }
+
+        public async Task<int> GetUnreadLogsCountAsync(string level = null)
+        {
+            var query = _context.Logger.AsQueryable();
+            
+            if (!string.IsNullOrEmpty(level))
+            {
+                query = query.Where(l => l.Level == level);
+            }
+            
             return await query.CountAsync();
         }
 

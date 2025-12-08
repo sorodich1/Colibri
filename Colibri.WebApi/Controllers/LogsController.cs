@@ -6,7 +6,6 @@ using Colibri.Data.Services.Abstracts;
 using Colibri.WebApi.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Colibri.WebApi.Controllers
 {
@@ -21,7 +20,6 @@ namespace Colibri.WebApi.Controllers
         }
 
         [HttpGet]
-        [Route("")]
         public async Task<IActionResult> Index([FromQuery] int page = 1, [FromQuery] int pageSize = 50, [FromQuery] string level = null,
             [FromQuery] string search = null, [FromQuery] DateTime? fromDate = null, [FromQuery] DateTime? toDate = null)
         {
@@ -49,6 +47,7 @@ namespace Colibri.WebApi.Controllers
             ViewData["Search"] = search;
             ViewData["FromDate"] = fromDate;
             ViewData["ToDate"] = toDate;
+            ViewData["UnreadCount"] = await _loggerService.GetUnreadLogsCountAsync();
 
             return View(logEntries);
         }
@@ -62,7 +61,18 @@ namespace Colibri.WebApi.Controllers
             {
                 return NotFound();
             }
-            return View(log);
+            
+            var logEntry = new LogEntry
+            {
+                Id = log.Id,
+                Level = log.Level,
+                User = log.User,
+                Message = log.Message,
+                Logger = log.Logger,
+                Timestamp = log.Timestamp
+            };
+            
+            return View(logEntry);
         }
 
         [HttpGet]
@@ -83,7 +93,7 @@ namespace Colibri.WebApi.Controllers
         {
             if (logIds != null && logIds.Count > 0)
             {
-            // Используем сервис!
+                // Используем сервис!
                 await _loggerService.DeleteLogsAsync(logIds);
                             
                 TempData["Message"] = $"Удалено {logIds.Count} логов";
@@ -96,6 +106,42 @@ namespace Colibri.WebApi.Controllers
             }
 
             return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        [Route("delete/{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var exists = await _loggerService.DeleteLogAsync(id);
+            if (!exists)
+            {
+                return NotFound();
+            }
+
+            await _loggerService.DeleteLogAsync(id);
+            
+            TempData["Message"] = "Лог успешно удален";
+            TempData["MessageType"] = "success";
+            
+            return RedirectToAction("Index");
+        }
+
+        [HttpGet]
+        [Route("recent")]
+        public async Task<IActionResult> RecentLogs([FromQuery] int count = 10)
+        {
+            var logs = await _loggerService.GetRecentLogsAsync(count);
+            var logEntries = logs.Select(log => new LogEntry
+            {
+                Id = log.Id,
+                Level = log.Level,
+                User = log.User,
+                Message = log.Message,
+                Logger = log.Logger,
+                Timestamp = log.Timestamp
+            }).ToList();
+            
+            return View("_RecentLogsPartial", logEntries);
         }
     }
 }

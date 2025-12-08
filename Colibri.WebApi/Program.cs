@@ -44,6 +44,8 @@ namespace Colibri.WebApi
 
                 var app = builder.Build();
 
+                app.UseStaticFiles();
+
                 app.UseWebSockets();
 
                 app.Use(async (context, next) =>

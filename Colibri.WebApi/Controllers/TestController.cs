@@ -24,29 +24,34 @@ namespace Colibri.WebApi.Controllers
         private readonly IDroneConnectionService _droneConnection = droneConnection;
 
         // Базовый URL дрона
-        private const string DRONE_BASE_URL = "http://85.141.101.21:8080";
+       // private const string DRONE_BASE_URL = "http://85.141.101.21:8080";
+
+        private const string DRONE_BASE_URL = "http://192.168.1.159:8080";
 
         /// <summary>
-        /// Взлёт на определённую высоту
+        /// Взлёт на определённую высоту или посадка
         /// </summary>
         [HttpPost("SystemCheck")]
         public async Task<IActionResult> SystemCheck(bool isActive, int distance)
         {
             try
             {
-                // EventRegistration registration = new()
-                // {
-                //     EventId = 2,
-                //     IsActive = isActive,
-                //     CreatedAt = DateTime.Now,
-                //     UpdatedAt = DateTime.Now,
-                //     IsDeleted = false
-                // };
+                string operation = isActive ? $"ВЗЛЕТ на {distance} метров" : "ПОСАДКА";
+                _logger.LogMessage(User, $"🚀 Команда: {operation}", LogLevel.Information);
 
-                // await _flightServece.AddEventRegistration(registration);
+                // 1. Записываем событие в БД
+                EventRegistration registration = new()
+                {
+                    EventId = 2,
+                    IsActive = isActive,
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now,
+                    IsDeleted = false
+                };
 
-          
+                await _flightServece.AddEventRegistration(registration);
 
+                // 2. Формируем команду для дрона
                 DroneCommand command = new()
                 {
                     Takeoff = isActive,
@@ -54,21 +59,41 @@ namespace Colibri.WebApi.Controllers
                 };
 
                 string json = JsonSerializer.Serialize(command);
+                _logger.LogMessage(User, $"📤 Отправляемая команда: {json}", LogLevel.Information);
 
-                var result = await _droneConnection.SendCommandToDrone($"takeoff-land", command);
+                // 3. Отправляем команду дрону через сервис
+                var result = await _droneConnection.SendCommandToDrone("takeoff-land", command);
 
-                if (!result.Success)
+                // 4. Логируем результат
+                if (result.Success)
                 {
-                    _logger.LogMessage(User, "Не удалось отправить команду взлёта/посадки", LogLevel.Error);
-                    return Ok("error");
+                    _logger.LogMessage(User, $"✅ {operation} успешно отправлена дрону", LogLevel.Information);
+                    
+                    // Проверяем ответ от дрона (если нужно)
+                    // Здесь мы не парсим response, так как SendCommandToDrone уже проверяет ошибки
+                    
+                    return Ok(new { 
+                        status = "success", 
+                        message = $"{operation} команда принята дроном"
+                    });
                 }
-
-                return Ok("success");
+                else
+                {
+                    _logger.LogMessage(User, $"❌ Ошибка отправки команды: {result.ErrorMessage}", LogLevel.Error);
+                    
+                    return Ok(new { 
+                        status = "error", 
+                        message = $"Не удалось отправить команду дрону: {result.ErrorMessage}"
+                    });
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
-                return Ok("error");
+                _logger.LogMessage(User, $"💥 Исключение: {ex.Message}", LogLevel.Error);
+                return Ok(new { 
+                    status = "error", 
+                    message = $"Исключение: {ex.Message}"
+                });
             }
         }
 
@@ -204,6 +229,58 @@ namespace Colibri.WebApi.Controllers
             }
         }
 
+        /// <summary>
+        /// логирование на серверСбросс всех заданий
+        /// </summary>
+        /// <param name="stop"></param>
+        /// <returns></returns>
+        [HttpPost("reset")]
+        public IActionResult Reset(bool stop)
+        {
+            // log содержит поля из systemd journal
+            // Сохрани в базу: log.Message, log.Timestamp, log.Unit и т.д.
+            
+            return Ok("success");
+        }
 
+        /// <summary>
+        /// Возвращение на домашнюю позицию
+        /// </summary>
+        /// <param name="stat"></param>
+        /// <returns></returns>
+        [HttpPost("home")]
+        public IActionResult HomePosition(bool stat)
+        {
+            // log содержит поля из systemd journal
+            // Сохрани в базу: log.Message, log.Timestamp, log.Unit и т.д.
+            return Ok("success");
+        }
+		
+		/// <summary>
+        /// логирование на сервер
+        /// </summary>
+        /// <param name="logData"></param>
+        /// <returns></returns>
+        [HttpPost("logs")]
+        public IActionResult Post([FromBody] Dictionary<string, object> logData)
+        {
+            try
+            {
+                // logData содержит все поля из journald JSON
+                var message = logData.ContainsKey("MESSAGE") ? logData["MESSAGE"].ToString() : "No message";
+                var timestamp = logData.ContainsKey("__REALTIME_TIMESTAMP") ? logData["__REALTIME_TIMESTAMP"].ToString() : "";
+                var unit = logData.ContainsKey("_SYSTEMD_UNIT") ? logData["_SYSTEMD_UNIT"].ToString() : "";
+                
+                // Сохрани в базу
+                _logger.LogMessage(User, $"Received log: {message}", LogLevel.Warning);
+                
+                return Ok(new { received = true, message = "Log saved" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogMessage(User, "Error processing log", LogLevel.Warning);
+                return BadRequest(new { error = ex.Message });
+            }
+        }
     }
 }

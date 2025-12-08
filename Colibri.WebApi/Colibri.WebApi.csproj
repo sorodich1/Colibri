@@ -23,4 +23,8 @@
     <ProjectReference Include="..\Colibri.GetDirection\Colibri.GetDirection.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="logs\" />
+  </ItemGroup>
+
 </Project>
