@@ -1,0 +1,431 @@
+﻿@model List<Colibri.WebApi.Models.TelemetryEntry>
+@{
+    ViewData["Title"] = "Телеметрия";
+    var page = (int)ViewData["Page"]!;
+    var pageSize = (int)ViewData["PageSize"]!;
+    var total = (int)ViewData["Total"]!;
+    var totalPages = (int)ViewData["TotalPages"]!;
+    var gpsStatuses = (List<string>)ViewData["GpsStatuses"]!;
+    var selectedGpsStatus = ViewData["SelectedGpsStatus"] as string;
+    var search = ViewData["Search"] as string;
+    var fromDate = ViewData["FromDate"] as DateTime?;
+    var toDate = ViewData["ToDate"] as DateTime?;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>@ViewData["Title"]</title>
+    <style>
+        body { padding: 20px; font-family: Arial, sans-serif; }
+        .table-responsive { max-height: 70vh; overflow-y: auto; }
+        .telemetry-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .telemetry-table th { background: #2c3e50; color: white; padding: 10px; text-align: left; position: sticky; top: 0; }
+        .telemetry-table td { padding: 8px; border-bottom: 1px solid #ddd; }
+        .telemetry-table tr:hover { background: #f5f5f5; }
+        
+        .badge { padding: 3px 8px; border-radius: 4px; font-size: 12px; color: white; }
+        .badge-success { background: #28a745; }
+        .badge-warning { background: #ffc107; color: #212529; }
+        .badge-danger { background: #dc3545; }
+        .badge-info { background: #17a2b8; }
+        .badge-secondary { background: #6c757d; }
+        
+        .sensor-indicator { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+        .sensor-on { background: #28a745; }
+        .sensor-off { background: #dc3545; }
+        
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: white; margin: 5% auto; padding: 20px; border-radius: 8px; width: 80%; max-width: 800px; max-height: 80vh; overflow-y: auto; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover { color: black; }
+        
+        .telemetry-detail { margin-top: 15px; }
+        .telemetry-detail-row { margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 4px; }
+        .telemetry-detail-label { font-weight: bold; color: #495057; min-width: 200px; display: inline-block; }
+        .telemetry-detail-value { color: #212529; }
+        
+        .actions-bar { 
+            background: #f8f9fa; 
+            padding: 10px 15px; 
+            margin-bottom: 15px; 
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .actions-bar button { 
+            padding: 5px 15px; 
+            background: #dc3545; 
+            color: white; 
+            border: none; 
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .actions-bar button:hover { background: #c82333; }
+        .select-all { margin-right: 10px; }
+        .checkbox-cell { width: 40px; text-align: center; }
+        
+        .message { 
+            padding: 10px; 
+            margin-bottom: 15px; 
+            border-radius: 5px; 
+            display: none;
+        }
+        .message.success { background: #d4edda; color: #155724; display: block; }
+        .message.warning { background: #fff3cd; color: #856404; display: block; }
+        
+        .pagination { margin: 20px 0; }
+        .pagination a { padding: 5px 10px; margin: 0 2px; border: 1px solid #ddd; text-decoration: none; }
+        .pagination .active { background: #3498db; color: white; }
+        
+        .filter-form { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .filter-form input, .filter-form select { padding: 5px; margin-right: 10px; }
+        .filter-form button { padding: 5px 15px; background: #2c3e50; color: white; border: none; cursor: pointer; }
+        
+        .map-link { color: #007bff; text-decoration: none; }
+        .map-link:hover { text-decoration: underline; }
+        
+        .coordinates { font-family: monospace; background: #f1f3f4; padding: 2px 5px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>📡 Телеметрия</h1>
+    
+    @if (TempData["Message"] != null)
+    {
+        <div class="message @TempData["MessageType"]">
+            @TempData["Message"]
+        </div>
+    }
+    
+    <div class="actions-bar">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <input type="checkbox" id="selectAll" class="select-all" />
+            <label for="selectAll">Выбрать все</label>
+            <button type="button" onclick="confirmDelete()">
+                🗑️ Удалить выбранные
+            </button>
+        </div>
+        
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <button type="button" onclick="clearOldTelemetries()" style="background: #6c757d;">
+                🧹 Очистить старые
+            </button>
+            <select id="daysToKeep" style="padding: 5px;">
+                <option value="7">7 дней</option>
+                <option value="30" selected>30 дней</option>
+                <option value="90">90 дней</option>
+                <option value="365">1 год</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="filter-form">
+        <form method="get">
+            <select name="gpsStatus">
+                <option value="">Все статусы GPS</option>
+                @foreach (var status in gpsStatuses)
+                {
+                    <option value="@status" selected="@(status == selectedGpsStatus)">@status</option>
+                }
+            </select>
+            
+            <input type="text" name="search" value="@search" placeholder="Поиск по GPS статусу..." />
+            
+            <input type="date" name="fromDate" value="@(fromDate?.ToString("yyyy-MM-dd"))" />
+            <input type="date" name="toDate" value="@(toDate?.ToString("yyyy-MM-dd"))" />
+            
+            <button type="submit">🔍 Фильтровать</button>
+            <a href="/telemetry" style="margin-left: 10px; text-decoration: none;">↩️ Сбросить</a>
+        </form>
+    </div>
+
+    <div style="background: #e3f2fd; padding: 10px; margin-bottom: 15px; border-radius: 5px;">
+        📊 Всего записей: <strong>@total</strong>
+        @if (!string.IsNullOrEmpty(selectedGpsStatus))
+        {
+            <span> | Статус GPS: <strong>@selectedGpsStatus</strong></span>
+        }
+        <span style="float: right;">Страница: <strong> из @totalPages</strong></span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="telemetry-table">
+            <thead>
+                <tr>
+                    <th class="checkbox-cell">
+                        <input type="checkbox" id="tableSelectAll" />
+                    </th>
+                    <th width="80">ID</th>
+                    <th width="180">Дата/Время</th>
+                    <th width="200">Координаты</th>
+                    <th width="120">Высота</th>
+                    <th width="150">Батарея</th>
+                    <th width="150">Датчики</th>
+                    <th>GPS Статус</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var telemetry in Model)
+                {
+                    <tr onclick="showTelemetryDetails(@Json.Serialize(telemetry))" style="cursor: pointer;">
+                        <td class="checkbox-cell" onclick="event.stopPropagation()">
+                            <input type="checkbox" name="telemetryIds" value="@telemetry.Id" class="telemetry-checkbox" />
+                        </td>
+                        <td>#@telemetry.Id</td>
+                        <td>@telemetry.CreatedAt.ToString("dd.MM.yy HH:mm:ss")</td>
+                        <td>
+                            <a href="https://maps.google.com/?q=@telemetry.Latitude,@telemetry.Longitude" 
+                               target="_blank" 
+                               class="map-link"
+                               onclick="event.stopPropagation()">
+                                <span class="coordinates">@telemetry.Coordinates</span>
+                            </a>
+                        </td>
+                        <td>
+                            <div>Абс: @telemetry.Altitude.ToString("F1") м</div>
+                            <div>Отн: @telemetry.RelativeAltitude.ToString("F1") м</div>
+                        </td>
+                        <td>
+                            <div>@telemetry.BatteryInfo</div>
+                            @if (telemetry.BatteryPercentage < 20)
+                            {
+                                <span class="badge badge-danger">Низкий заряд</span>
+                            }
+                            else if (telemetry.BatteryPercentage < 50)
+                            {
+                                <span class="badge badge-warning">Средний заряд</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-success">Высокий заряд</span>
+                            }
+                        </td>
+                        <td>
+                            <div>
+                                <span class="sensor-indicator @(telemetry.Gyro ? "sensor-on" : "sensor-off")"></span> Гиро
+                                <span class="sensor-indicator @(telemetry.Accel ? "sensor-on" : "sensor-off")"></span> Аксель
+                                <span class="sensor-indicator @(telemetry.Mag ? "sensor-on" : "sensor-off")"></span> Маг
+                            </div>
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(telemetry.GpsStatus))
+                            {
+                                <span class="badge badge-info">@telemetry.GpsStatus</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-secondary">Нет данных</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 30px; color: #666;">
+                            📭 Записей телеметрии не найдено
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    
+    @if (totalPages > 1)
+    {
+        <div class="pagination">
+            @if (page > 1)
+            {
+                <a href="?page=@(page-1)&gpsStatus=@selectedGpsStatus&search=@search&fromDate=@(fromDate?.ToString("yyyy-MM-dd"))&toDate=@(toDate?.ToString("yyyy-MM-dd"))">
+                    ← Назад
+                </a>
+            }
+            
+            @for (int i = Math.Max(1, page - 2); i <= Math.Min(totalPages, page + 2); i++)
+            {
+                <a href="?page=@i&gpsStatus=@selectedGpsStatus&search=@search&fromDate=@(fromDate?.ToString("yyyy-MM-dd"))&toDate=@(toDate?.ToString("yyyy-MM-dd"))"
+                   class="@(i == page ? "active" : "")">
+                    @i
+                </a>
+            }
+            
+            @if (page < totalPages)
+            {
+                <a href="?page=@(page+1)&gpsStatus=@selectedGpsStatus&search=@search&fromDate=@(fromDate?.ToString("yyyy-MM-dd"))&toDate=@(toDate?.ToString("yyyy-MM-dd"))">
+                    Вперёд →
+                </a>
+            }
+        </div>
+    }
+
+    <div id="telemetryModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>📡 Детали телеметрии</h2>
+            <div id="telemetryDetails" class="telemetry-detail">
+                <!-- Данные будут заполнены JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <form id="deleteForm" method="post" action="/telemetry/delete" style="display: none;">
+        <!-- JavaScript добавит поля с ID -->
+    </form>
+
+    <script>
+        document.getElementById('selectAll')?.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.telemetry-checkbox');
+            checkboxes.forEach(cb => cb.checked = this.checked);
+            document.getElementById('tableSelectAll').checked = this.checked;
+        });
+
+        document.getElementById('tableSelectAll')?.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.telemetry-checkbox');
+            checkboxes.forEach(cb => cb.checked = this.checked);
+            document.getElementById('selectAll').checked = this.checked;
+        });
+
+        const modal = document.getElementById('telemetryModal');
+        
+        function showTelemetryDetails(telemetry) {
+            const modalContent = document.getElementById('telemetryDetails');
+            
+            const timestamp = new Date(telemetry.createdAt);
+            const updatedAt = new Date(telemetry.updatedAt);
+            
+            modalContent.innerHTML = `
+                <div class="telemetry-detail-row">
+                    <span class="telemetry-detail-label">ID:</span>
+                    <span class="telemetry-detail-value">#${telemetry.id}</span>
+                </div>
+                <div class="telemetry-detail-row">
+                    <span class="telemetry-detail-label">Дата создания:</span>
+                    <span class="telemetry-detail-value">${timestamp.toLocaleString('ru-RU')}</span>
+                </div>
+                <div class="telemetry-detail-row">
+                    <span class="telemetry-detail-label">Дата обновления:</span>
+                    <span class="telemetry-detail-value">${updatedAt.toLocaleString('ru-RU')}</span>
+                </div>
+                <div class="telemetry-detail-row">
+                    <span class="telemetry-detail-label">Координаты:</span>
+                    <span class="telemetry-detail-value">
+                        <strong>${telemetry.latitude.toFixed(6)}, ${telemetry.longitude.toFixed(6)}</strong>
+                        <br>
+                        <a href="https://maps.google.com/?q=${telemetry.latitude},${telemetry.longitude}" 
+                           target="_blank" style="color: #007bff; text-decoration: none;">
+                            📍 Открыть в Google Maps
+                        </a>
+                    </span>
+                </div>
+                <div class="telemetry-detail-row">
+                    <span class="telemetry-detail-label">Высота:</span>
+                    <span class="telemetry-detail-value">
+                        Абсолютная: <strong>${telemetry.altitude.toFixed(1)} м</strong><br>
+                        Относительная: <strong>${telemetry.relativeAltitude.toFixed(1)} м</strong>
+                    </span>
+                </div>
+                <div class="telemetry-detail-row">
+                    <span class="telemetry-detail-label">Батарея:</span>
+                    <span class="telemetry-detail-value">
+                        Напряжение: <strong>${telemetry.batteryVoltage.toFixed(2)} В</strong><br>
+                        Процент: <strong>${telemetry.batteryPercentage.toFixed(1)}%</strong>
+                        ${telemetry.batteryPercentage < 20 ? 
+                            '<span class="badge badge-danger" style="margin-left: 10px;">Низкий заряд</span>' : 
+                          telemetry.batteryPercentage < 50 ?
+                            '<span class="badge badge-warning" style="margin-left: 10px;">Средний заряд</span>' :
+                            '<span class="badge badge-success" style="margin-left: 10px;">Высокий заряд</span>'}
+                    </span>
+                </div>
+                <div class="telemetry-detail-row">
+                    <span class="telemetry-detail-label">Датчики:</span>
+                    <span class="telemetry-detail-value">
+                        <div style="margin-bottom: 5px;">
+                            <span class="sensor-indicator ${telemetry.gyro ? 'sensor-on' : 'sensor-off'}"></span>
+                            Гироскоп: <strong>${telemetry.gyro ? 'Включен' : 'Выключен'}</strong>
+                        </div>
+                        <div style="margin-bottom: 5px;">
+                            <span class="sensor-indicator ${telemetry.accel ? 'sensor-on' : 'sensor-off'}"></span>
+                            Акселерометр: <strong>${telemetry.accel ? 'Включен' : 'Выключен'}</strong>
+                        </div>
+                        <div>
+                            <span class="sensor-indicator ${telemetry.mag ? 'sensor-on' : 'sensor-off'}"></span>
+                            Магнитометр: <strong>${telemetry.mag ? 'Включен' : 'Выключен'}</strong>
+                        </div>
+                    </span>
+                </div>
+                <div class="telemetry-detail-row">
+                    <span class="telemetry-detail-label">Статус GPS:</span>
+                    <span class="telemetry-detail-value">
+                        ${telemetry.gpsStatus ? 
+                            `<span class="badge badge-info">${telemetry.gpsStatus}</span>` :
+                            '<span class="badge badge-secondary">Нет данных</span>'}
+                    </span>
+                </div>
+            `;
+            
+            modal.style.display = 'block';
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+
+        function confirmDelete() {
+            const selectedTelemetries = document.querySelectorAll('.telemetry-checkbox:checked');
+            if (selectedTelemetries.length === 0) {
+                alert('Выберите хотя бы одну запись телеметрии для удаления');
+                return;
+            }
+
+            if (confirm(`Вы уверены, что хотите удалить ${selectedTelemetries.length} записей телеметрии?`)) {
+                const form = document.getElementById('deleteForm');
+                
+                const oldInputs = form.querySelectorAll('input[name="telemetryIds"]');
+                oldInputs.forEach(input => input.remove());
+                
+                selectedTelemetries.forEach(cb => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'telemetryIds';
+                    input.value = cb.value;
+                    form.appendChild(input);
+                });
+                
+                form.submit();
+            }
+        }
+
+        function clearOldTelemetries() {
+            const days = document.getElementById('daysToKeep').value;
+            if (confirm(`Удалить все записи телеметрии старше ${days} дней?`)) {
+                const form = document.createElement('form');
+                form.method = 'post';
+                form.action = '/telemetry/clear-old';
+                
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'days';
+                input.value = days;
+                
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        setTimeout(() => {
+            if (!document.querySelector('.telemetry-checkbox:checked')) {
+                location.reload();
+            }
+        }, 30000);
+    </script>
+</body>
+</html>
