@@ -140,37 +140,37 @@ namespace Colibri.WebApi.Controllers
         /// Полёт по гео точкам
         /// </summary>
         [HttpPost("TestAutopilot")]
-        public async Task<IActionResult> TestAutopilot(double latitude, double longitude)
+        public async Task<IActionResult> TestAutopilot(string geoPosition)
         {
             try
             {
-                _logger.LogMessage(User, $"Тестируется полёт по координатам широта - {latitude}, долгота - {longitude}", LogLevel.Information);
+                _logger.LogMessage(User, $"Тестируется полёт по геоточкам - {geoPosition}", LogLevel.Information);
 
-                var activeDroneUrl = DRONE_BASE_URL;
+                // var activeDroneUrl = DRONE_BASE_URL;
 
-                // Получаем текущую позицию дрона
-                var dronePosition = await _missionPlanning.GetCurrentDronePosition(activeDroneUrl);
-                var startPoint = dronePosition.Position;
+                // // Получаем текущую позицию дрона
+                // var dronePosition = await _missionPlanning.GetCurrentDronePosition(activeDroneUrl);
+                // var startPoint = dronePosition.Position;
 
-                // Создаем миссию
-                var mission = await _missionPlanning.CreateDeliveryMission(
-                    startPoint,
-                    new GeoPoint { Latitude = latitude, Longitude = longitude, Altitude = 5 },
-                    cruiseSpeed: 15,
-                    altitude: 5);
+                // // Создаем миссию
+                // var mission = await _missionPlanning.CreateDeliveryMission(
+                //     startPoint,
+                //     new GeoPoint { Latitude = latitude, Longitude = longitude, Altitude = 5 },
+                //     cruiseSpeed: 15,
+                //     altitude: 5);
 
-                // Отправляем миссию
-                var result = await _droneConnection.SendCommandToDrone($"execute-mission", mission);
+                // // Отправляем миссию
+                // var result = await _droneConnection.SendCommandToDrone($"execute-mission", mission);
 
-                if (!result.Success)
-                {
-                    _logger.LogMessage(User, "Не удалось отправить миссию на дрон", LogLevel.Error);
-                    return Ok("error: не удалось отправить миссию на дрон");
-                }
+                // if (!result.Success)
+                // {
+                //     _logger.LogMessage(User, "Не удалось отправить миссию на дрон", LogLevel.Error);
+                //     return Ok("error: не удалось отправить миссию на дрон");
+                // }
 
-                await LogMissionCreation(startPoint, new GeoPoint { Latitude = latitude, Longitude = longitude, Altitude = 10 }, "mission_executed");
+                // await LogMissionCreation(startPoint, new GeoPoint { Latitude = latitude, Longitude = longitude, Altitude = 10 }, "mission_executed");
 
-                _logger.LogMessage(User, $"Миссия успешно отправлена на дрон: {result.DroneUrl}", LogLevel.Information);
+                // _logger.LogMessage(User, $"Миссия успешно отправлена на дрон: {result.DroneUrl}", LogLevel.Information);
 
                 return Ok("success");
             }

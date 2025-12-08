@@ -6,12 +6,12 @@ namespace Colibri.WebApi.Models;
 public class TelemetryEntry
 {
         public int Id { get; set; }
-        public decimal Latitude { get; set; }
-        public decimal Longitude { get; set; }
-        public decimal Altitude { get; set; }
-        public decimal RelativeAltitude { get; set; }
-        public decimal BatteryVoltage { get; set; }
-        public decimal BatteryPercentage { get; set; }
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public double Altitude { get; set; }
+        public double RelativeAltitude { get; set; }
+        public double BatteryVoltage { get; set; }
+        public double BatteryPercentage { get; set; }
         public bool Gyro { get; set; }
         public bool Accel { get; set; }
         public bool Mag { get; set; }

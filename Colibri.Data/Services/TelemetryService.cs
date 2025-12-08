@@ -13,64 +13,137 @@ public class TelemetryService(AppDbContext context) : ITelemetryService
 {
     private readonly AppDbContext _context = context;
 
-    public async Task<Telemetry> GetLatestTelemetryAsync()
-    {
-        return await _context.Telemetries
-            .Where(t => !t.IsDeleted)
-            .OrderByDescending(t => t.CreatedAt)
-            .FirstOrDefaultAsync();
-    }
-
-    public async Task<List<Telemetry>> GetTelemetryByPeriodAsync(DateTime from, DateTime to)
-    {
-        return await _context.Telemetries
-            .Where(t => !t.IsDeleted && t.CreatedAt >= from && t.CreatedAt <= to)
-            .OrderBy(t => t.CreatedAt)
-            .ToListAsync();
-    }
-
-    public async Task<object> GetTelemetryStatsAsync(DateTime from, DateTime to)
-    {
-        var telemetryData = await GetTelemetryByPeriodAsync(from, to);
-            
-        if (!telemetryData.Any())
+            public async Task<List<Telemetry>> GetTelemetriesAsync(int page = 1, int pageSize = 50, 
+            DateTime? fromDate = null, DateTime? toDate = null, 
+            string search = null, bool? gpsStatus = null)
         {
-            return new { Message = "No data for the selected period" };
-        }
+            var query = _context.Telemetries
+                .Where(t => !t.IsDeleted)
+                .AsQueryable();
 
-        return new
-        {
-            TotalRecords = telemetryData.Count,
-            FirstRecord = telemetryData.First().CreatedAt,
-            LastRecord = telemetryData.Last().CreatedAt,
-            BatteryStats = new
+            // Применяем фильтры
+            if (fromDate.HasValue)
             {
-                AverageVoltage = telemetryData.Average(t => t.BatteryVoltage),
-                MinVoltage = telemetryData.Min(t => t.BatteryVoltage),
-                MaxVoltage = telemetryData.Max(t => t.BatteryVoltage),
-                AveragePercentage = telemetryData.Average(t => t.BatteryPercentage)
-            },
-            PositionStats = new
-            {
-                AverageAltitude = telemetryData.Average(t => t.Altitude),
-                MinAltitude = telemetryData.Min(t => t.Altitude),
-                MaxAltitude = telemetryData.Max(t => t.Altitude)
+                query = query.Where(t => t.CreatedAt >= fromDate.Value);
             }
-        };
-    }
 
-    public async Task<Telemetry> SaveTelemetryAsync(Telemetry telemetry)
-    {
-        try
+            if (toDate.HasValue)
+            {
+                query = query.Where(t => t.CreatedAt <= toDate.Value);
+            }
+
+            if (gpsStatus.HasValue)
+            {
+                query = query.Where(t => t.Gyro == gpsStatus.Value);
+            }
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                query = query.Where(t => 
+                    t.GpsStatus != null && t.GpsStatus.Contains(search));
+            }
+
+            // Сортировка и пагинация
+            return await query
+                .OrderByDescending(t => t.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
+        public async Task<Telemetry> GetTelemetryByIdAsync(int id)
         {
-            await _context.Telemetries.AddAsync(telemetry);
+            return await _context.Telemetries
+                .Where(t => !t.IsDeleted && t.Id == id)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<int> GetTotalCountAsync(DateTime? fromDate = null, DateTime? toDate = null, 
+            string search = null, bool? gpsStatus = null)
+        {
+            var query = _context.Telemetries
+                .Where(t => !t.IsDeleted)
+                .AsQueryable();
+
+            if (fromDate.HasValue)
+            {
+                query = query.Where(t => t.CreatedAt >= fromDate.Value);
+            }
+
+            if (toDate.HasValue)
+            {
+                query = query.Where(t => t.CreatedAt <= toDate.Value);
+            }
+
+            if (gpsStatus.HasValue)
+            {
+                query = query.Where(t => t.Gyro == gpsStatus.Value);
+            }
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                query = query.Where(t => 
+                    t.GpsStatus != null && t.GpsStatus.Contains(search));
+            }
+
+            return await query.CountAsync();
+        }
+
+        public async Task DeleteTelemetryAsync(int id)
+        {
+            var telemetry = await _context.Telemetries.FindAsync(id);
+            if (telemetry != null)
+            {
+                telemetry.IsDeleted = true;
+                telemetry.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task DeleteTelemetriesAsync(List<int> telemetryIds)
+        {
+            if (telemetryIds == null || telemetryIds.Count == 0)
+                return;
+
+            var telemetriesToDelete = await _context.Telemetries
+                .Where(t => telemetryIds.Contains(t.Id))
+                .ToListAsync();
+            
+            if (telemetriesToDelete.Count > 0)
+            {
+                foreach (var telemetry in telemetriesToDelete)
+                {
+                    telemetry.IsDeleted = true;
+                    telemetry.UpdatedAt = DateTime.UtcNow;
+                }
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task ClearOldTelemetriesAsync(DateTime olderThan)
+        {
+            var oldTelemetries = await _context.Telemetries
+                .Where(t => !t.IsDeleted && t.CreatedAt < olderThan)
+                .ToListAsync();
+
+            foreach (var telemetry in oldTelemetries)
+            {
+                telemetry.IsDeleted = true;
+                telemetry.UpdatedAt = DateTime.UtcNow;
+            }
+
             await _context.SaveChangesAsync();
+        }
 
-            return telemetry;
-        }
-        catch (Exception ex)
+        public async Task<List<string>> GetGpsStatusesAsync()
         {
-            throw new Exception("Error saving telemetry", ex);
+            return await _context.Telemetries
+                .Where(t => !t.IsDeleted && t.GpsStatus != null)
+                .Select(t => t.GpsStatus)
+                .Distinct()
+                .OrderBy(s => s)
+                .ToListAsync();
         }
-    }
 }
