@@ -234,6 +234,32 @@ namespace Colibri.WebApi.Controllers
                 return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
             }
         }
+
+        /// <summary>
+        /// Выборка пользователя по имени
+        /// </summary>
+        /// <param name="userName">Имя пользователя</param>
+        /// <returns></returns>
+        [HttpPost("userName")]
+        [Authorize]
+        public async Task<IActionResult> GetUserByName(string userName)
+        {
+            try
+            {
+                var user = await _account.GetByNameUserAsync(userName);
+
+                if (user == null) return BadRequest();
+
+                _logger.LogMessage(User, $"Выгружен пользователь с логином: [{user.UserName}]", LogLevel.Information);
+
+                return Json(user);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
+                return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
+            }
+        }
         /// <summary>
         /// Создание роли
         /// </summary>

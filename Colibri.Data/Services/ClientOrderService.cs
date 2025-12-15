@@ -106,6 +106,28 @@ namespace Colibri.Data.Services
                 throw new InvalidOperationException("Ошибка выборки из базы данных списка всех карточек товаров", ex);
             }
         }
+
+        /// <summary>
+        /// Получает последние 5 заказов для конкретного клиента.
+        /// </summary>
+        /// <param name="user">Пользователь (клиент).</param>
+        /// <returns>Асинхронная задача, возвращающая список последних 5 заказов клиента.</returns>
+        /// <exception cref="InvalidOperationException">Исключение при ошибке выборки из базы данных</exception>
+        public async Task<List<Order>> GetLastFiveOrdersByUserAsync(User user)
+        {
+            try
+            {
+                return await _context.Orders
+                    .Where(x => x.UserId.ToGuid() == user.Id)
+                    .OrderByDescending(x => x.CreatedAt)
+                    .Take(5)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Ошибка выборки последних 5 заказов для пользователя", ex);
+            }
+        }
         /// <summary>
         /// Получает продукт по его уникальному идентификатору.
         /// </summary>
@@ -154,6 +176,85 @@ namespace Colibri.Data.Services
             catch (Exception ex)
             {
                 throw new InvalidOperationException("Ошибка выборки из базы данных списка всех товаров", ex);
+            }
+        }
+
+        /// <summary>
+        /// Удаляет заказ по идентификатору.
+        /// </summary>
+        /// <param name="id">Идентификатор заказа.</param>
+        /// <returns>Асинхронная задача, возвращающая true, если удаление успешно.</returns>
+        /// <exception cref="InvalidOperationException">Исключение при ошибке удаления</exception>
+        public async Task<bool> DeleteOrderAsync(int id)
+        {
+            try
+            {
+                var order = await _context.Orders.FindAsync(id);
+                
+                if (order == null)
+                {
+                    return false;
+                }
+
+                order.IsDeleted = true; // Мягкое удаление
+                order.UpdatedAt = DateTime.UtcNow;
+                
+                // Или для полного удаления:
+                // _context.Orders.Remove(order);
+                
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Ошибка удаления заказа из базы данных", ex);
+            }
+        }
+
+        /// <summary>
+        /// Удаляет продукт по идентификатору.
+        /// </summary>
+        /// <param name="id">Идентификатор продукта.</param>
+        /// <returns>Асинхронная задача, возвращающая true, если удаление успешно.</returns>
+        /// <exception cref="InvalidOperationException">Исключение при ошибке удаления</exception>
+        public async Task<bool> DeleteProductAsync(int id)
+        {
+            try
+            {
+                var product = await _context.Products.FindAsync(id);
+                
+                if (product == null)
+                {
+                    return false;
+                }
+
+                // Мягкое удаление, если есть поле IsDeleted
+                if (_context.Model.FindEntityType(typeof(Product)).FindProperty("IsDeleted") != null)
+                {
+                    var isDeletedProperty = typeof(Product).GetProperty("IsDeleted");
+                    if (isDeletedProperty != null && isDeletedProperty.CanWrite)
+                    {
+                        isDeletedProperty.SetValue(product, true);
+                    }
+                    
+                    var updatedAtProperty = typeof(Product).GetProperty("UpdatedAt");
+                    if (updatedAtProperty != null && updatedAtProperty.CanWrite)
+                    {
+                        updatedAtProperty.SetValue(product, DateTime.UtcNow);
+                    }
+                }
+                else
+                {
+                    // Полное удаление
+                    _context.Products.Remove(product);
+                }
+                
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Ошибка удаления продукта из базы данных", ex);
             }
         }
     }

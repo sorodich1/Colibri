@@ -47,4 +47,5 @@ public class Telemetry : AudiTable
     /// Состояние gps датчиков
     /// </summary>
     public string GpsStatus { get; set; }
+    public int Satellites { get; set; }
 }

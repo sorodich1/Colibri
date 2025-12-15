@@ -4,23 +4,21 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Colibri.Data.Entity;
+using Colibri.Data.Helpers;
 using Colibri.Data.Services.Abstracts;
 using Colibri.WebApi.DTO;
 using Colibri.WebApi.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Colibri.WebApi.Controllers
 {
      [Route("telemetry")]
-    public class TelemetryController : Controller
+    public class TelemetryController(ILoggerService logger, ITelemetryService telemetryService) : Controller
     {
-        private readonly ITelemetryService _telemetryService;
-
-        public TelemetryController(ITelemetryService telemetryService)
-        {
-            _telemetryService = telemetryService;
-        }
+        private readonly ITelemetryService _telemetryService = telemetryService;
+        private readonly ILoggerService _logger = logger;
 
         [HttpGet]
         [Route("")]
@@ -131,6 +129,81 @@ namespace Colibri.WebApi.Controllers
             TempData["MessageType"] = "success";
             
             return RedirectToAction("Index");
+        }
+
+                /// <summary>
+        /// Прием телеметрии от дрона
+        /// </summary>
+        [HttpPost]
+        [Route("api/telemetry")]
+        public async Task<IActionResult> ReceiveTelemetry([FromBody] DroneTelemetryDto telemetryDto)
+        {
+            try
+            {
+                if (telemetryDto == null)
+                {
+                    _logger.LogMessage(User, $"Получен пустой запрос телеметрии", LogLevel.Error);
+                    return BadRequest(new { error = "Пустой запрос" });
+                }
+
+                // Валидация основных полей
+                if (telemetryDto.Latitude < -90 || telemetryDto.Latitude > 90)
+                {
+                    _logger.LogMessage(User, $"Некорректная широта: {telemetryDto.Latitude}", LogLevel.Error);
+                    return BadRequest(new { error = "Некорректная широта" });
+                }
+
+                if (telemetryDto.Longitude < -180 || telemetryDto.Longitude > 180)
+                {
+                    _logger.LogMessage(User, $"Некорректная долгота: {telemetryDto.Longitude}", LogLevel.Error);
+                    return BadRequest(new { error = "Некорректная долгота" });
+                }
+
+                // Создаем сущность для сохранения в БД
+                var telemetry = new Telemetry
+                {
+                    Latitude = telemetryDto.Latitude,
+                    Longitude = telemetryDto.Longitude,
+                    Altitude = telemetryDto.Altitude,
+                    RelativeAltitude = telemetryDto.RelativeAltitude,
+                    BatteryVoltage = telemetryDto.BatteryVoltage,
+                    BatteryPercentage = telemetryDto.BatteryPercentage,
+                    Gyro = telemetryDto.Gyro,
+                    Accel = telemetryDto.Accel,
+                    Mag = telemetryDto.Mag,
+                    GpsStatus = telemetryDto.GpsStatus ?? "NO_FIX",
+                    Satellites = telemetryDto.Satellites,
+                    CreatedAt = telemetryDto.Timestamp,
+                    UpdatedAt = DateTime.UtcNow,
+                    IsDeleted = false
+                };
+
+                await _telemetryService.AddTelemetryAsync(telemetry);
+
+                // Возвращаем успешный ответ
+                return Ok(new 
+                { 
+                    status = "success",
+                    message = "Телеметрия получена и сохранена",
+                    telemetry_id = telemetry.Id,
+                    timestamp = telemetry.CreatedAt
+                });
+            }
+            catch (JsonException jsonEx)
+            {
+                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(jsonEx), LogLevel.Error);
+                return BadRequest(new { error = "Некорректный JSON формат", details = jsonEx.Message });
+            }
+            catch (DbUpdateException dbEx)
+            {
+                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(dbEx), LogLevel.Error);
+                return StatusCode(500, new { error = "Ошибка сохранения данных", details = dbEx.InnerException?.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
+                return StatusCode(500, new { error = "Внутренняя ошибка сервера", details = ex.Message });
+            }
         }
     }
 }

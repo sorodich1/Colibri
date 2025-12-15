@@ -75,7 +75,7 @@ namespace Colibri.ConnectNetwork.Services
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException("Ошибка передачи POST запроса по протоколу HTTP", ex);
+                throw new InvalidOperationException($"Ошибка передачи POST запроса по протоколу HTTP - {ex.Message}", ex);
             }
         }
 

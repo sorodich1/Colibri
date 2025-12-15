@@ -14,7 +14,7 @@ namespace Colibri.Data.Helpers
         /// <summary>
         /// Дата создания поля
         /// </summary>
-        public DateTime CreatedAt { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
         /// <summary>
         /// Дата изменения поля
         /// </summary>

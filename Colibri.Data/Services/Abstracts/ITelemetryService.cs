@@ -20,4 +20,5 @@ public interface ITelemetryService
     Task ClearOldTelemetriesAsync(DateTime olderThan);
         
     Task<List<string>> GetGpsStatusesAsync();
+    Task<bool> AddTelemetryAsync(Telemetry telemetry);
 }

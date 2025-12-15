@@ -28,8 +28,13 @@ namespace Colibri.Data.Entity
         /// </summary>
         public decimal DeliveryLongitude { get; set; }
         /// <summary>
+        /// 
         /// Статус доставки
         /// </summary>
         public string Status { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string CreatedBy { get; set; }
     }
 }

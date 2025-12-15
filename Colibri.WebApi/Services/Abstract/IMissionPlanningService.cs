@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Colibri.WebApi.Models;
 
@@ -5,6 +6,8 @@ namespace Colibri.WebApi.Services.Abstract;
 
 public interface IMissionPlanningService
 {
-    Task<object> CreateDeliveryMission(GeoPoint startPoint, GeoPoint destination, double cruiseSpeed = 15, double altitude = 10);
+    Task<object> CreateDeliveryMission(GeoPoint startPoint, List<GeoPoint> waypoints, 
+    double cruiseSpeed = 15, double altitude = 5, bool returnToHome = false);
     Task<DronePosition> GetCurrentDronePosition(string droneUrl);
+    Task<object> CreateReturnToHomeMission(GeoPoint currentPosition, double altitude = 5);
 }

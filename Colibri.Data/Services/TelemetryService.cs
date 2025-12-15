@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Colibri.Data.Context;
@@ -13,7 +14,7 @@ public class TelemetryService(AppDbContext context) : ITelemetryService
 {
     private readonly AppDbContext _context = context;
 
-            public async Task<List<Telemetry>> GetTelemetriesAsync(int page = 1, int pageSize = 50, 
+        public async Task<List<Telemetry>> GetTelemetriesAsync(int page = 1, int pageSize = 50, 
             DateTime? fromDate = null, DateTime? toDate = null, 
             string search = null, bool? gpsStatus = null)
         {
@@ -146,4 +147,11 @@ public class TelemetryService(AppDbContext context) : ITelemetryService
                 .OrderBy(s => s)
                 .ToListAsync();
         }
+
+    public async Task<bool> AddTelemetryAsync(Telemetry telemetry)
+    {
+        _context.Add(telemetry);
+        await _context.SaveChangesAsync();
+        return true;
+    }
 }

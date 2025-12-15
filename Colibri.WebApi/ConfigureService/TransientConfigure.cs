@@ -29,10 +29,10 @@ namespace Colibri.WebApi.ConfigureService
             services.AddTransient<ITcpConnectService, TcpConnectService>();
             services.AddTransient<IFlightService, FlightService>();
             services.AddScoped<IHttpConnectService, HttpConnectService>();
-            services.AddScoped<ITelemetryServices, TelemetryServices>();
             services.AddScoped<IDroneConnectionService, DroneConnectionService>();
             services.AddScoped<IMissionPlanningService, MissionPlanningService>();
             services.AddScoped<ITelemetryService, TelemetryService>();
+            services.AddTransient<IHomePositionService, HomePositionService>();
 
             services.AddTransient<IJwtGenerator>(provider =>
             new JwtGenerator(

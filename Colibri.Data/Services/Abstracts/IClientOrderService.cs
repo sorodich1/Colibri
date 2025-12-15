@@ -22,6 +22,9 @@ namespace Colibri.Data.Services.Abstracts
         /// <param name="product">Объект продукта, который необходимо создать.</param>
         /// <returns>Асинхронная задача, возвращающая <c>true</c>, если продукт успешно создан; в противном случае <c>false</c>.</returns>
         Task<bool> CreadProductAsync(Product product);
+
+        Task<List<Order>> GetLastFiveOrdersByUserAsync(User user);
+
         /// <summary>
         /// Получает список всех заказов.
         /// </summary>
@@ -56,5 +59,19 @@ namespace Colibri.Data.Services.Abstracts
         /// <param name="user">Пользователь</param>
         /// <returns>Список товаров по имени пользователя</returns>
         Task<List<Order>> GetOrderByUserAsync(User user);
+
+        /// <summary>
+        /// Удаляет заказ по идентификатору.
+        /// </summary>
+        /// <param name="id">Идентификатор заказа.</param>
+        /// <returns>Асинхронная задача, возвращающая true, если удаление успешно.</returns>
+        Task<bool> DeleteOrderAsync(int id);
+
+        /// <summary>
+        /// Удаляет продукт по идентификатору.
+        /// </summary>
+        /// <param name="id">Идентификатор продукта.</param>
+        /// <returns>Асинхронная задача, возвращающая true, если удаление успешно.</returns>
+        Task<bool> DeleteProductAsync(int id);
     }
 }

@@ -113,7 +113,8 @@ namespace Colibri.WebApi.Controllers
                     ProductId = orderModel.ProductId,
                     Quentity = orderModel.Quentity,
                     UserId = orderModel.UserId,
-                    Status = OrderStatus.Created.ToString()
+                    Status = OrderStatus.Created.ToString(),
+                    CreatedBy = User.Identity.Name
                 };
 
 
@@ -185,5 +186,120 @@ namespace Colibri.WebApi.Controllers
                 return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
             }
         }
+
+        /// <summary>
+        /// Получение последних 5 заказов для текущего пользователя
+        /// </summary>
+        /// <returns>Список последних 5 заказов пользователя</returns>
+        [Authorize]
+        [HttpGet("getLastFiveOrders")]
+        public async Task<IActionResult> GetLastFiveOrders()
+        {
+            try
+            {
+                var user = await _accountService.GetByNameUserAsync(User.Identity.Name);
+                
+                if (user == null)
+                {
+                    return Unauthorized("Пользователь не найден");
+                }
+                
+                var lastFiveOrders = await _clientOrder.GetLastFiveOrdersByUserAsync(user);
+                
+                return Ok(lastFiveOrders);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
+                return BadRequest(Auxiliary.GetDetailedExceptionMessage(ex));
+            }
+        }
+
+        /// <summary>
+        /// Удаление заказа по идентификатору
+        /// </summary>
+        /// <param name="orderId">Идентификатор заказа</param>
+        /// <returns>Результат операции удаления</returns>
+        [Authorize]
+        [HttpDelete("deleteOrder/{orderId}")]
+        public async Task<IActionResult> DeleteOrder(int orderId)
+        {
+            try
+            {
+                // Опционально: проверка прав доступа
+                var order = await _clientOrder.GetOrderByIdAsync(orderId);
+                if (order == null)
+                {
+                    return NotFound($"Заказ с ID {orderId} не найден");
+                }
+
+                // Проверка, что пользователь имеет право удалять этот заказ
+                var currentUser = await _accountService.GetByNameUserAsync(User.Identity.Name);
+                if (order.UserId.ToGuid() != currentUser.Id && !User.IsInRole("Admin"))
+                {
+                    return Forbid("У вас нет прав для удаления этого заказа");
+                }
+
+                var result = await _clientOrder.DeleteOrderAsync(orderId);
+                
+                if (!result)
+                {
+                    return NotFound($"Заказ с ID {orderId} не найден или уже удален");
+                }
+
+                _logger.LogMessage(User, $"Удален заказ из базы данных -- [{orderId}]", LogLevel.Information);
+                
+                return Ok(new { success = true, message = "Заказ успешно удален" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
+                return BadRequest(new { success = false, error = Auxiliary.GetDetailedExceptionMessage(ex) });
+            }
+        }
+
+        /// <summary>
+        /// Удаление продукта по идентификатору
+        /// </summary>
+        /// <param name="productId">Идентификатор продукта</param>
+        /// <returns>Результат операции удаления</returns>
+        [Authorize]
+        [HttpDelete("deleteProduct/{productId}")]
+        public async Task<IActionResult> DeleteProduct(int productId)
+        {
+            try
+            {
+                // Опционально: проверка прав доступа
+                var product = await _clientOrder.GetProductByIdAsync(productId);
+                if (product == null)
+                {
+                    return NotFound($"Продукт с ID {productId} не найден");
+                }
+
+                // Проверка, что пользователь имеет право удалять этот продукт
+                var currentUser = await _accountService.GetByNameUserAsync(User.Identity.Name);
+                if (product.UserId != currentUser.Id && !User.IsInRole("Admin"))
+                {
+                    return Forbid("У вас нет прав для удаления этого продукта");
+                }
+
+                var result = await _clientOrder.DeleteProductAsync(productId);
+                
+                if (!result)
+                {
+                    return NotFound($"Продукт с ID {productId} не найден или уже удален");
+                }
+
+                _logger.LogMessage(User, $"Удален продукт из базы данных -- [{product.Name}]", LogLevel.Information);
+                
+                return Ok(new { success = true, message = "Продукт успешно удален" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
+                return BadRequest(new { success = false, error = Auxiliary.GetDetailedExceptionMessage(ex) });
+            }
+        }
+
     }
 }
