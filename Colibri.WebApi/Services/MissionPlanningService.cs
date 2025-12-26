@@ -31,8 +31,9 @@ public class MissionPlanningService : IMissionPlanningService
         _homePositionService = homePositionService;
     }
 
-    public async Task<object> CreateDeliveryMission(GeoPoint startPoint, List<GeoPoint> waypoints, 
-    double cruiseSpeed = 15, double altitude = 5, bool returnToHome = false)
+    public async Task<object> CreateFullQgcMission(GeoPoint startPoint, List<GeoPoint> waypoints, 
+    double cruiseSpeed = 15, double altitude = 5, bool returnToHome = false, 
+    double takeoffAltitude = 50, double hoverSpeed = 5)
     {
         if (waypoints == null || waypoints.Count == 0)
         {
@@ -52,58 +53,181 @@ public class MissionPlanningService : IMissionPlanningService
                                 $"Lat={startPoint.Latitude:F6}, Lon={startPoint.Longitude:F6}");
         }
 
-        // Создаем список команд для миссии
-        var missionItems = new List<Dictionary<string, object>>
-        {
-            // 1. Команда взлета
-            new() {
-                ["command"] = 22, // TAKEOFF
-                ["params"] = new object[] { 0, 0, 0, 0, startPoint.Latitude, startPoint.Longitude, altitude }
-            }
-        };
+        var missionItems = new List<Dictionary<string, object>>();
+        int doJumpId = 1;
 
-        // 2. Команды для каждой точки маршрута
-        foreach (var waypoint in waypoints)
+        // 1. Первая команда изменения скорости (в начале миссии)
+        missionItems.Add(new Dictionary<string, object>
         {
+            ["autoContinue"] = true,
+            ["command"] = 178, // MAV_CMD_DO_CHANGE_SPEED
+            ["doJumpId"] = doJumpId++,
+            ["frame"] = 2, // MAV_FRAME_MISSION
+            ["params"] = new object[] { 1, hoverSpeed, -1, 0, 0, 0, 0 },
+            ["type"] = "SimpleItem"
+        });
+
+        // 2. Команда взлета (на повышенную высоту как в QGC)
+        missionItems.Add(new Dictionary<string, object>
+        {
+            ["AMSLAltAboveTerrain"] = null,
+            ["Altitude"] = takeoffAltitude,
+            ["AltitudeMode"] = 1, // Relative to home
+            ["autoContinue"] = true,
+            ["command"] = 22, // MAV_CMD_NAV_TAKEOFF
+            ["doJumpId"] = doJumpId++,
+            ["frame"] = 3, // MAV_FRAME_GLOBAL_RELATIVE_ALT
+            ["params"] = new object[] { 0, 0, 0, null, startPoint.Latitude, startPoint.Longitude, takeoffAltitude },
+            ["type"] = "SimpleItem"
+        });
+
+        // 3. Команды для каждой точки маршрута с командами скорости между ними
+        for (int i = 0; i < waypoints.Count; i++)
+        {
+            var waypoint = waypoints[i];
+            
+            // Используем высоту из waypoint, если она задана, иначе высоту по умолчанию
+            double pointAltitude = waypoint.Altitude > 0 ? waypoint.Altitude : altitude;
+            
+            // Команда точки маршрута
             missionItems.Add(new Dictionary<string, object>
             {
-                ["command"] = 16, // WAYPOINT
-                ["params"] = new object[] { 0, 0, 0, 0, waypoint.Latitude, waypoint.Longitude, altitude }
+                ["AMSLAltAboveTerrain"] = null,
+                ["Altitude"] = pointAltitude,
+                ["AltitudeMode"] = 1,
+                ["autoContinue"] = true,
+                ["command"] = 16, // MAV_CMD_NAV_WAYPOINT
+                ["doJumpId"] = doJumpId++,
+                ["frame"] = 3,
+                ["params"] = new object[] { 0, 0, 0, 0, waypoint.Latitude, waypoint.Longitude, pointAltitude },
+                ["type"] = "SimpleItem"
             });
-            
-            _logger.LogDebug($"Добавлена точка маршрута: Lat={waypoint.Latitude:F6}, Lon={waypoint.Longitude:F6}");
+
+            _logger.LogDebug($"Добавлена точка маршрута {i+1}: Lat={waypoint.Latitude:F6}, Lon={waypoint.Longitude:F6}, Alt={pointAltitude}м");
+
+            // Если это не последняя точка - добавляем команду скорости
+            if (i < waypoints.Count - 1)
+            {
+                missionItems.Add(new Dictionary<string, object>
+                {
+                    ["autoContinue"] = true,
+                    ["command"] = 178,
+                    ["doJumpId"] = doJumpId++,
+                    ["frame"] = 2,
+                    ["params"] = new object[] { 1, hoverSpeed, -1, 0, 0, 0, 0 },
+                    ["type"] = "SimpleItem"
+                });
+            }
         }
 
-        // 3. Если нужно вернуться в точку взлета (домашнюю позицию)
+        // 4. Если нужно вернуться в точку взлета (домашнюю позицию)
         if (returnToHome)
         {
+            // Команда скорости перед возвратом домой
             missionItems.Add(new Dictionary<string, object>
             {
+                ["autoContinue"] = true,
+                ["command"] = 178,
+                ["doJumpId"] = doJumpId++,
+                ["frame"] = 2,
+                ["params"] = new object[] { 1, hoverSpeed, -1, 0, 0, 0, 0 },
+                ["type"] = "SimpleItem"
+            });
+
+            // Команда точки возврата домой (на высоте последней точки или altitude)
+            double returnAltitude = waypoints.Count > 0 ? waypoints.Last().Altitude : altitude;
+            if (returnAltitude <= 0) returnAltitude = altitude;
+            
+            missionItems.Add(new Dictionary<string, object>
+            {
+                ["AMSLAltAboveTerrain"] = null,
+                ["Altitude"] = returnAltitude,
+                ["AltitudeMode"] = 1,
+                ["autoContinue"] = true,
                 ["command"] = 16, // WAYPOINT к домашней позиции
-                ["params"] = new object[] { 0, 0, 0, 0, startPoint.Latitude, startPoint.Longitude, altitude }
+                ["doJumpId"] = doJumpId++,
+                ["frame"] = 3,
+                ["params"] = new object[] { 0, 0, 0, 0, startPoint.Latitude, startPoint.Longitude, returnAltitude },
+                ["type"] = "SimpleItem"
             });
         }
 
-        // 4. Команда посадки (в последней точке или дома)
+        // 5. Команда скорости перед посадкой
+        missionItems.Add(new Dictionary<string, object>
+        {
+            ["autoContinue"] = true,
+            ["command"] = 178,
+            ["doJumpId"] = doJumpId++,
+            ["frame"] = 2,
+            ["params"] = new object[] { 1, 2, -1, 0, 0, 0, 0 }, // Скорость посадки 2 м/с
+            ["type"] = "SimpleItem"
+        });
+
+        // 6. Команда посадки (в последней точке или дома)
         var landingPoint = returnToHome ? startPoint : waypoints.Last();
         missionItems.Add(new Dictionary<string, object>
         {
-            ["command"] = 21, // LAND
-            ["params"] = new object[] { 0, 0, 0, 0, landingPoint.Latitude, landingPoint.Longitude, 0 }
+            ["AMSLAltAboveTerrain"] = null,
+            ["Altitude"] = 0,
+            ["AltitudeMode"] = 1,
+            ["autoContinue"] = true,
+            ["command"] = 21, // MAV_CMD_NAV_LAND
+            ["doJumpId"] = doJumpId++,
+            ["frame"] = 3,
+            ["params"] = new object[] { 0, 0, 0, null, landingPoint.Latitude, landingPoint.Longitude, 0 },
+            ["type"] = "SimpleItem"
         });
 
-        // Формируем полную миссию
+        // Формируем полную миссию в формате QGC
         var mission = new Dictionary<string, object>
         {
+            ["fileType"] = "Plan",
+            ["geoFence"] = new Dictionary<string, object>
+            {
+                ["circles"] = new List<object>(),
+                ["polygons"] = new List<object>(),
+                ["version"] = 2
+            },
+            ["groundStation"] = "QGroundControl",
             ["mission"] = new Dictionary<string, object>
             {
-                ["plannedHomePosition"] = new double[] { startPoint.Latitude, startPoint.Longitude, altitude },
-                ["items"] = missionItems
-            }
+                ["cruiseSpeed"] = cruiseSpeed,
+                ["firmwareType"] = 3, // ArduPilot
+                ["globalPlanAltitudeMode"] = 0, // Relative
+                ["hoverSpeed"] = hoverSpeed,
+                ["items"] = missionItems,
+                ["plannedHomePosition"] = new double[] { startPoint.Latitude, startPoint.Longitude, takeoffAltitude },
+                ["vehicleType"] = 2, // Quadrotor
+                ["version"] = 2
+            },
+            ["rallyPoints"] = new Dictionary<string, object>
+            {
+                ["points"] = new List<object>(),
+                ["version"] = 2
+            },
+            ["version"] = 1
         };
 
-        _logger.LogInformation($"Создана миссия с {waypoints.Count} точками маршрута. " +
-                            $"Возврат домой: {returnToHome}, Высота: {altitude}м");
+        _logger.LogInformation($"Создана ПОЛНАЯ QGC миссия с {waypoints.Count} точками маршрута. " +
+                            $"Возврат домой: {returnToHome}, Высота взлета: {takeoffAltitude}м, " +
+                            $"Крейсерская скорость: {cruiseSpeed}м/с, Скорость зависания: {hoverSpeed}м/с, " +
+                            $"Всего команд в миссии: {missionItems.Count}");
+
+        // Логируем детали для отладки
+        _logger.LogDebug($"Структура миссии:");
+        _logger.LogDebug($"1. Команда скорости (178) - начало");
+        _logger.LogDebug($"2. Взлет (22) на {takeoffAltitude}м");
+        
+        for (int i = 0; i < waypoints.Count; i++)
+        {
+            _logger.LogDebug($"{i + 3}. Точка {i + 1} (16) - {waypoints[i].Latitude:F6}, {waypoints[i].Longitude:F6}");
+            if (i < waypoints.Count - 1)
+            {
+                _logger.LogDebug($"{i + 4}. Команда скорости (178)");
+            }
+        }
+        
+        _logger.LogDebug($"{waypoints.Count + 3}. Команда посадки (21) - {landingPoint.Latitude:F6}, {landingPoint.Longitude:F6}");
 
         return await Task.FromResult(mission);
     }

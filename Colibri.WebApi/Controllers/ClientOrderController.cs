@@ -103,9 +103,12 @@ namespace Colibri.WebApi.Controllers
             {
                 if (orderModel == null)
                 {
-                    return BadRequest();
+                    return BadRequest("Order data is required");
                 }
 
+                // Добавляем временную метку создания
+                var createdDate = DateTime.UtcNow;
+                
                 Order order = new()
                 {
                     DeliveryLatitude = orderModel.DeliveryLatitude,
@@ -114,20 +117,40 @@ namespace Colibri.WebApi.Controllers
                     Quentity = orderModel.Quentity,
                     UserId = orderModel.UserId,
                     Status = OrderStatus.Created.ToString(),
-                    CreatedBy = User.Identity.Name
+                    CreatedBy = User.Identity.Name,
+                    CreatedAt = createdDate, // Добавляем дату создания
+                    UpdatedAt = createdDate
                 };
-
 
                 await _clientOrder.CreadOrdersAsync(order);
 
                 _logger.LogMessage(User, $"Добавлена карточка товара в базу данных -- [{order.Id}]", LogLevel.Information);
 
-                return Ok("succes");
+                // Создаем объект ответа с нужными данными
+                var response = new
+                {
+                    Success = true,
+                    Message = "Order created successfully",
+                    OrderId = order.Id,
+                    CreatedDate = createdDate, // Возвращаем дату создания
+                    Status = order.Status
+                };
+
+                return Ok(response);
             }
             catch (Exception ex)
             {
                 _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
-                return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
+                
+                // Возвращаем ошибку в структурированном виде
+                var errorResponse = new
+                {
+                    Success = false,
+                    Message = "An error occurred while creating the order",
+                    Error = Auxiliary.GetDetailedExceptionMessage(ex)
+                };
+                
+                return StatusCode(500, errorResponse);
             }
         }
         /// <summary>

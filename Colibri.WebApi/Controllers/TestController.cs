@@ -185,7 +185,7 @@ namespace Colibri.WebApi.Controllers
 
                     // 2. Создаем миссию из всех точек (используем новый метод для массива точек)
                     // Параметр returnToHome = false - не возвращаемся в точку взлета, садимся в последней точке
-                    var mission = await _missionPlanning.CreateDeliveryMission(
+                    var mission = await _missionPlanning.CreateFullQgcMission(
                         startPoint: startPoint,
                         waypoints: request.Waypoints,
                         returnToHome: false // Посадка в последней точке маршрута

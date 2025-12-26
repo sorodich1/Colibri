@@ -1,4 +1,5 @@
-﻿using Colibri.Data.Helpers;
+﻿using System;
+using Colibri.Data.Helpers;
 
 namespace Colibri.Data.Entity
 {
