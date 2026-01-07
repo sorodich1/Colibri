@@ -232,53 +232,6 @@ public class MissionPlanningService : IMissionPlanningService
         return await Task.FromResult(mission);
     }
 
-    // Добавляем новый метод для создания миссии возврата домой
-        public async Task<object> CreateReturnToHomeMission(GeoPoint currentPosition, double altitude = 2)
-        {
-            // Получаем домашнюю позицию из отдельного сервиса
-            var homePosition = await _homePositionService.GetHomePosition();
-            
-            if (homePosition == null)
-            {
-                _logger.LogError("Попытка создать миссию возврата домой, но домашняя позиция не установлена");
-                throw new InvalidOperationException("Домашняя позиция не установлена. Сначала запустите обычную миссию.");
-            }
-            
-            _logger.LogInformation($"Создаем миссию возврата домой. Текущая позиция: Lat={currentPosition.Latitude:F6}, Lon={currentPosition.Longitude:F6}");
-            _logger.LogInformation($"Целевая домашняя позиция: Lat={homePosition.Latitude:F6}, Lon={homePosition.Longitude:F6}, Высота: {altitude}м");
-            
-            var mission = new Dictionary<string, object>
-            {
-                ["mission"] = new Dictionary<string, object>
-                {
-                    ["plannedHomePosition"] = new double[] { homePosition.Latitude, homePosition.Longitude, altitude },
-                    ["items"] = new List<Dictionary<string, object>>
-                    {
-                        new() {
-                            ["command"] = 22, // TAKEOFF (если дрон уже в воздухе, эта команда будет проигнорирована)
-                            ["params"] = new object[] { 0, 0, 0, 0, currentPosition.Latitude, currentPosition.Longitude, altitude }
-                        },
-                        new() {
-                            ["command"] = 16, // WAYPOINT к домашней позиции (на заданной высоте)
-                            ["params"] = new object[] { 0, 0, 0, 0, homePosition.Latitude, homePosition.Longitude, altitude }
-                        },
-                        // УБИРАЕМ команду LAND - дрон будет висеть на месте
-                        // Вместо посадки добавляем команду зависания (LOITER)
-                        new() {
-                            ["command"] = 17, // LOITER - зависание на месте
-                            ["params"] = new object[] { 0, 0, 0, 0, 0, 0, 0 } // Параметры зависания
-                        }
-                        // Примечание: Если нужно зависать определенное время, можно добавить команду LOITER_TIME
-                        // или просто оставить дрон висеть на последней точке
-                    }
-                }
-            };
-            
-            _logger.LogInformation($"Миссия возврата домой создана. Дрон зависнет на высоте {altitude}м над домашней позицией");
-            
-            return await Task.FromResult(mission);
-        }
-
     public async Task<DronePosition> GetCurrentDronePosition(string droneUrl)
     {
         try
@@ -352,4 +305,57 @@ public class MissionPlanningService : IMissionPlanningService
             };
         }
     }
+
+
+
+
+    // public async Task<DronePosition> GetCurrentDronePosition(string droneUrl)
+    // {
+    //     try
+    //     {
+    //         _logger.LogInformation($"Получаем позицию дрона с URL: {droneUrl}");
+
+    //         // ВРЕМЕННО: используем фиктивные координаты
+    //         var fakeLatitude = 59.886053; 
+    //         var fakeLongitude = 30.485970;
+    //         var fakeAltitude = 5.0;
+            
+    //         _logger.LogInformation($"Используются фиктивные координаты: {fakeLatitude}, {fakeLongitude}, высота: {fakeAltitude}м");
+            
+    //         return new DronePosition
+    //         {
+    //             Position = new GeoPoint
+    //             {
+    //                 Latitude = fakeLatitude,
+    //                 Longitude = fakeLongitude,
+    //                 Altitude = fakeAltitude
+    //             },
+    //             Speed = 0,
+    //             Course = 0,
+    //             Satellites = 12,
+    //             Timestamp = DateTime.UtcNow,
+    //             Status = "Connected (Test Data)"
+    //         };
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         _logger.LogError($"Ошибка получения позиции дрона: {ex.Message}");
+            
+    //         // Возвращаем фиктивные координаты даже при ошибке
+    //         return new DronePosition
+    //         {
+    //             Position = new GeoPoint
+    //             {
+    //                 Latitude = 59.934280,
+    //                 Longitude = 30.335098,
+    //                 Altitude = 5.0
+    //             },
+    //             Speed = 0,
+    //             Course = 0,
+    //             Satellites = 12,
+    //             Timestamp = DateTime.UtcNow,
+    //             Status = $"Error: {ex.Message}"
+    //         };
+    //     }
+    //}
 }
