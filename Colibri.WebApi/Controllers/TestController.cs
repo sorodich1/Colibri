@@ -28,7 +28,10 @@ namespace Colibri.WebApi.Controllers
         private readonly IHomePositionService _homePositionService = homePositionService;
 
         // Базовый URL дрона
-       private const string DRONE_BASE_URL = "http://85.141.101.21:8080";
+       //private const string DRONE_BASE_URL = "http://85.141.101.21:8080";
+
+       private const string DRONE_BASE_URL = "http://78.25.108.95:8080";
+
 
         // private const string DRONE_BASE_URL = "http://192.168.1.159:8080";
         private static DronePosition DRONE_BASE_POS = new ();

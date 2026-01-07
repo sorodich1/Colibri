@@ -5,6 +5,7 @@ using Colibri.Data.Services;
 using Colibri.Data.Services.Abstracts;
 using Colibri.WebApi.Services;
 using Colibri.WebApi.Services.Abstract;
+using Colibri.WebApi.WebSokets;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -28,11 +29,13 @@ namespace Colibri.WebApi.ConfigureService
             services.AddTransient<IClientOrderService, ClientOrderService>();
             services.AddTransient<ITcpConnectService, TcpConnectService>();
             services.AddTransient<IFlightService, FlightService>();
-            services.AddScoped<IHttpConnectService, HttpConnectService>();
-            services.AddScoped<IDroneConnectionService, DroneConnectionService>();
+            services.AddSingleton<IHttpConnectService, HttpConnectService>();
+            services.AddSingleton<IDroneConnectionService, DroneConnectionService>();
             services.AddScoped<IMissionPlanningService, MissionPlanningService>();
             services.AddScoped<ITelemetryService, TelemetryService>();
             services.AddTransient<IHomePositionService, HomePositionService>();
+            services.AddSingleton<IWebSocketStatusService, WebSocketStatusService>();
+            services.AddSingleton<DroneWebSocketHandler>();
 
             services.AddTransient<IJwtGenerator>(provider =>
             new JwtGenerator(
