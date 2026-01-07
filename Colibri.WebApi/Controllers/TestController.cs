@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Colibri.Data.Entity;
@@ -28,7 +30,8 @@ namespace Colibri.WebApi.Controllers
         private readonly IHomePositionService _homePositionService = homePositionService;
 
         // Базовый URL дрона
-        private const string DRONE_BASE_URL = "http://85.141.101.21:8080";
+       // private const string DRONE_BASE_URL = "http://85.141.101.21:8080";
+        private const string DRONE_BASE_URL = "http://78.25.108.95:8080";
 
         /// <summary>
         /// Взлёт на определённую высоту или посадка
@@ -99,10 +102,6 @@ namespace Colibri.WebApi.Controllers
             }
         }
 
-        /// <summary>
-        /// Управление цветом подсветки
-        /// </summary>
-        [Authorize]
         [HttpPost("BacklightTesting")]
         public async Task<IActionResult> BacklightTesting(int colorNumber)
         {
@@ -121,13 +120,22 @@ namespace Colibri.WebApi.Controllers
 
                 await _flightServece.AddEventRegistration(registration);
 
-                var result = await _droneConnection.SendCommandToDrone($"{DRONE_BASE_URL}/api/led/control", colorNumber.ToString());
-
-                if (!result.Success)
+                // Используем HttpClient напрямую для LED
+                using var httpClient = new HttpClient();
+                
+                // LED контроллер ожидает plain text число
+                var content = new StringContent(colorNumber.ToString(), Encoding.UTF8, "text/plain");
+                
+                var response = await httpClient.PostAsync($"{DRONE_BASE_URL}/api/led/control", content);
+                
+                if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogMessage(User, "Не удалось отправить команду подсветки", LogLevel.Error);
+                    _logger.LogMessage(User, $"Не удалось отправить команду подсветки. Статус: {response.StatusCode}", LogLevel.Error);
                     return Ok("error");
                 }
+
+                var responseText = await response.Content.ReadAsStringAsync();
+                _logger.LogMessage(User, $"Ответ от дрона: {responseText}", LogLevel.Information);
 
                 return Ok("success");
             }

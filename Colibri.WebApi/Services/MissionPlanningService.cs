@@ -306,6 +306,12 @@ public class MissionPlanningService : IMissionPlanningService
         }
     }
 
+    public Task<object> CreateReturnToHomeMission(GeoPoint currentPosition, double altitude = 5)
+    {
+        throw new NotImplementedException();
+    }
+
+
 
 
 
@@ -319,9 +325,9 @@ public class MissionPlanningService : IMissionPlanningService
     //         var fakeLatitude = 59.886053; 
     //         var fakeLongitude = 30.485970;
     //         var fakeAltitude = 5.0;
-            
+
     //         _logger.LogInformation($"Используются фиктивные координаты: {fakeLatitude}, {fakeLongitude}, высота: {fakeAltitude}м");
-            
+
     //         return new DronePosition
     //         {
     //             Position = new GeoPoint
@@ -340,7 +346,7 @@ public class MissionPlanningService : IMissionPlanningService
     //     catch (Exception ex)
     //     {
     //         _logger.LogError($"Ошибка получения позиции дрона: {ex.Message}");
-            
+
     //         // Возвращаем фиктивные координаты даже при ошибке
     //         return new DronePosition
     //         {

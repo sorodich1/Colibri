@@ -81,7 +81,7 @@ namespace Colibri.WebApi.Controllers
         /// <summary>
         /// Открытие/закрытие бокса дрона
         /// </summary>
-        [Authorize]
+       // [Authorize]
         [HttpPost("openbox")]
         public async Task<IActionResult> OpenBox(bool isActive)
         {
