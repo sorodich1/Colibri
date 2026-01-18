@@ -474,7 +474,7 @@ namespace Colibri.WebApi.Controllers
             }
         }
 
-        private async Task<string> SendToLinuxCNC(string command)
+        private static async Task<string> SendToLinuxCNC(string command)
         {
             const string linuxCncHost = "37.29.71.91"; 
             const int linuxCncPort = 8888;

@@ -1884,3 +1884,218 @@ pre {
     opacity: 1;
     visibility: visible;
 }
+
+/*Аккаунт*/
+
+        .user-management-container {
+            padding: 20px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 12px;
+            line-height: 1.2;
+        }
+        
+        .filter-tags {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-tag {
+            padding: 5px 10px;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .filter-tag:hover {
+            background: #e9ecef;
+        }
+        
+        .filter-tag.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        
+        .no-data {
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .user-name {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .user-email {
+            color: #666;
+            font-size: 13px;
+        }
+        
+        .role-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-right: 4px;
+            margin-bottom: 4px;
+            display: inline-block;
+        }
+        
+        .role-admin { background-color: #dc3545; color: white; }
+        .role-user { background-color: #28a745; color: white; }
+        .role-technician { background-color: #17a2b8; color: white; }
+        .role-seller { background-color: #ffc107; color: #333; }
+        .role-buyer { background-color: #6f42c1; color: white; }
+        .role-other { background-color: #6c757d; color: white; }
+        
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            display: inline-block;
+        }
+        
+        .status-active { background-color: #d4edda; color: #155724; }
+        .status-locked { background-color: #f8d7da; color: #721c24; }
+        .status-inactive { background-color: #fff3cd; color: #856404; }
+        
+        .last-login {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .search-container {
+            margin-bottom: 20px;
+        }
+
+        .user-details-container {
+            padding: 20px;
+        }
+        
+        .user-header {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .user-avatar-large {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+        }
+        
+        .user-name-large {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .user-email-large {
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .user-roles-large {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .info-card {
+            height: 100%;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 180px 1fr;
+            gap: 12px;
+        }
+        
+        .info-label {
+            font-weight: 500;
+            color: #666;
+        }
+        
+        .info-value {
+            color: #333;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .role-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-right: 4px;
+            display: inline-block;
+        }
+        
+        .role-admin { background-color: #dc3545; color: white; }
+        .role-user { background-color: #28a745; color: white; }
+        .role-technician { background-color: #17a2b8; color: white; }
+        .role-seller { background-color: #ffc107; color: #333; }
+        .role-buyer { background-color: #6f42c1; color: white; }
+        .role-other { background-color: #6c757d; color: white; }
+        
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            display: inline-block;
+        }
+        
+        .status-active { background-color: #d4edda; color: #155724; }
+        .status-locked { background-color: #f8d7da; color: #721c24; }
+        .status-inactive { background-color: #fff3cd; color: #856404; }

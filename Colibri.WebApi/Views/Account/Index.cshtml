@@ -1,138 +1,195 @@
 ﻿@model List<Colibri.WebApi.Models.UserModel>
 @{
     ViewData["Title"] = "Управление пользователями";
-    Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-
-<div class="container user-management-container">
+<div class="user-management-container">
+    <!-- Заголовок и кнопки -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Управление пользователями</h1>
+        <h1>@ViewData["Title"]</h1>
         <div>
-            <button class="btn btn-primary" onclick="showAddUserModal()">
-                + Добавить пользователя
+            <button class="btn btn-primary" onclick="userManagement.showAddUserModal()">
+                <i>+</i> Добавить пользователя
+            </button>
+            <button class="btn btn-outline-primary" onclick="userManagement.refreshUsers()">
+                <i>↻</i> Обновить
             </button>
         </div>
     </div>
 
     <!-- Статистика -->
-    <div class="stats-cards">
-        <div class="stat-card">
-            <div class="stat-value">@Model.Count</div>
-            <div class="stat-label">Всего пользователей</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">@Model.Count(u => u.Roles.Contains("Admin"))</div>
-            <div class="stat-label">Администраторов</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">@Model.Count(u => u.IsLockedOut)</div>
-            <div class="stat-label">Заблокировано</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">@Model.Count(u => u.EmailConfirmed)</div>
-            <div class="stat-label">Подтвержденных</div>
+    <div class="stats-container" id="statsContainer">
+        <div class="row">
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="stat-card bg-primary">
+                    <h2>@Model.Count</h2>
+                    <h6>Всего пользователей</h6>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="stat-card bg-info">
+                    <h2>@Model.Count(u => !u.LockoutEnabled)</h2>
+                    <h6>Активных</h6>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="stat-card bg-warning">
+                    <h2>@Model.Count(u => u.LockoutEnabled)</h2>
+                    <h6>Заблокированных</h6>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="stat-card bg-danger">
+                    <h2>@Model.Count(u => u.Roles != null && u.Roles.Contains("admin"))</h2>
+                    <h6>Администраторов</h6>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Фильтры -->
-    <div class="filters">
-        <button class="filter-btn active" onclick="filterUsers('all')">Все</button>
-        <button class="filter-btn" onclick="filterUsers('admins')">Администраторы</button>
-        <button class="filter-btn" onclick="filterUsers('locked')">Заблокированные</button>
-        <button class="filter-btn" onclick="filterUsers('unconfirmed')">Не подтвержденные</button>
-    </div>
-
-    <!-- Поиск -->
-    <div class="search-bar">
-        <input type="text" 
-               class="search-input" 
-               placeholder="Поиск по имени, email или роли..." 
-               onkeyup="searchUsers(this.value)">
-        <button class="search-btn" onclick="searchUsers(document.querySelector('.search-input').value)">
-            🔍 Поиск
-        </button>
+    <!-- Поиск и фильтры -->
+    <div class="search-container card mb-4">
+        <div class="card-body">
+            <div class="input-group mb-3">
+                <input type="text" id="searchInput" class="form-control" 
+                       placeholder="Поиск по имени, email или роли..." 
+                       onkeyup="userManagement.filterUsers()">
+                <button class="btn btn-outline-secondary" onclick="userManagement.clearSearch()">
+                    Очистить
+                </button>
+            </div>
+            
+            <div class="filter-tags" id="filterTags">
+                <span class="filter-tag active" data-filter="all">Все</span>
+                <span class="filter-tag" data-filter="active">Активные</span>
+                <span class="filter-tag" data-filter="locked">Заблокированные</span>
+                <span class="filter-tag" data-filter="admin">Администраторы</span>
+                <span class="filter-tag" data-filter="technician">Техники</span>
+                <span class="filter-tag" data-filter="seller">Продавцы</span>
+                <span class="filter-tag" data-filter="buyer">Покупатели</span>
+            </div>
+        </div>
     </div>
 
     <!-- Таблица пользователей -->
     <div class="table-responsive">
-        <table class="user-table">
+        <table class="table user-table">
             <thead>
                 <tr>
                     <th>Пользователь</th>
                     <th>Роли</th>
-                    <th>Последний вход</th>
                     <th>Статус</th>
+                    <th>Последний вход</th>
                     <th>Действия</th>
                 </tr>
             </thead>
-            <tbody>
-                @foreach (var user in Model)
+            <tbody id="usersTableBody">
+                @if (Model != null && Model.Count > 0)
                 {
-                    <tr class="user-row" 
-                        data-id="@user.Id"
-                        data-name="@user.FullName.ToLower()"
-                        data-email="@user.Email.ToLower()"
-                        data-roles="@string.Join(" ", user.Roles).ToLower()"
-                        data-status="@(user.IsLockedOut ? "locked" : "active")"
-                        data-confirmed="@user.EmailConfirmed.ToString().ToLower()">
-                        <td>
-                            <div class="user-info">
-                                <div class="user-avatar">
-                                    @GetInitials(user.FirstName, user.LastName)
+                    foreach (var user in Model)
+                    {
+                        <tr data-user-id="@user.UserName" 
+                            data-status="@(user.LockoutEnabled ? "locked" : "active")" 
+                            data-roles="@string.Join(",", user.Roles ?? new List<string>())">
+                            <td>
+                                <div class="user-info">
+                                    <div class="user-avatar">
+                                        @{
+                                            var avatarText = string.IsNullOrEmpty(user.FirstName) && string.IsNullOrEmpty(user.LastName) 
+                                                ? user.UserName?[0].ToString().ToUpper() 
+                                                : (!string.IsNullOrEmpty(user.FirstName) ? user.FirstName[0] : user.LastName?[0]).ToString().ToUpper();
+                                        }
+                                        @avatarText
+                                    </div>
+                                    <div>
+                                        <div class="user-name">
+                                            @(string.IsNullOrEmpty(user.FirstName) && string.IsNullOrEmpty(user.LastName) 
+                                                ? user.UserName 
+                                                : $"{user.FirstName} {user.LastName}".Trim())
+                                        </div>
+                                        <div class="user-email">@user.Email</div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <div class="user-name">@user.FullName</div>
-                                    <div class="user-email">@user.Email</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="user-roles">
-                                @foreach (var role in user.Roles)
+                            </td>
+                            <td>
+                                @if (user.Roles != null && user.Roles.Any())
                                 {
-                                    <span class="role-badge @GetRoleClass(role)">@role</span>
-                                }
-                            </div>
-                        </td>
-                        <td>
-                            @user.FormattedLastLogin
-                        </td>
-                        <td>
-                            @if (user.IsLockedOut)
-                            {
-                                <span class="user-status status-locked">Заблокирован</span>
-                            }
-                            else if (!user.EmailConfirmed)
-                            {
-                                <span class="user-status status-inactive">Не подтвержден</span>
-                            }
-                            else
-                            {
-                                <span class="user-status status-active">Активен</span>
-                            }
-                        </td>
-                        <td>
-                            <div class="action-buttons">
-                                <a href="/admin/users/details/@user.Id" 
-                                   class="action-btn btn-view">👁 Просмотр</a>
-                                <button class="action-btn btn-edit" 
-                                        onclick="showEditUserModal('@user.Id')">✏️ Редактировать</button>
-                                
-                                @if (user.IsLockedOut)
-                                {
-                                    <button class="action-btn btn-unlock" 
-                                            onclick="toggleUserLock('@user.Id')">🔓 Разблокировать</button>
+                                    foreach (var role in user.Roles)
+                                    {
+                                        <span class="role-badge role-@role.ToLower()">@role</span>
+                                    }
                                 }
                                 else
                                 {
-                                    <button class="action-btn btn-lock" 
-                                            onclick="toggleUserLock('@user.Id')">🔒 Заблокировать</button>
+                                    <span class="text-muted">Нет ролей</span>
                                 }
-                                
-                                <button class="action-btn btn-reset" 
-                                        onclick="showResetPasswordModal('@user.Id', '@user.UserName')">🔄 Сброс пароля</button>
-                            </div>
+                            </td>
+                            <td>
+                                @if (user.LockoutEnabled)
+                                {
+                                    <span class="status-badge status-locked">Заблокирован</span>
+                                }
+                                else if (!user.EmailConfirmed)
+                                {
+                                    <span class="status-badge status-inactive">Не подтвержден</span>
+                                }
+                                else
+                                {
+                                    <span class="status-badge status-active">Активен</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="last-login">@user.LastLogin.ToString("dd.MM.yyyy HH:mm")</div>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <a href="/account/details/@user.Id" class="btn btn-sm btn-outline-primary" title="Просмотр">
+                                        👁
+                                    </a>
+                                    <button class="btn btn-sm btn-outline-warning" 
+                                            onclick="userManagement.editUser('@user.Id')" 
+                                            title="Редактировать">
+                                        ✏
+                                    </button>
+                                    @if (user.LockoutEnabled)
+                                    {
+                                        <button class="btn btn-sm btn-outline-success" 
+                                                onclick="userManagement.toggleLock('@user.UserName')" 
+                                                title="Разблокировать">
+                                            🔓
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger" 
+                                                onclick="userManagement.toggleLock('@user.UserName')" 
+                                                title="Заблокировать">
+                                            🔒
+                                        </button>
+                                    }
+                                    <button class="btn btn-sm btn-outline-info" 
+                                            onclick="userManagement.resetPassword('@user.UserName')" 
+                                            title="Сброс пароля">
+                                        🔑
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary" 
+                                            onclick="userManagement.manageRoles('@user.UserName')" 
+                                            title="Управление ролями">
+                                        👥
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="5" class="no-data text-center py-5">
+                            <div class="mb-3">Пользователи не найдены</div>
+                            <button class="btn btn-primary" onclick="userManagement.showAddUserModal()">
+                                Добавить первого пользователя
+                            </button>
                         </td>
                     </tr>
                 }
@@ -141,378 +198,478 @@
     </div>
 </div>
 
-<!-- Модальное окно добавления пользователя -->
+<!-- Модальные окна -->
 <div class="modal" id="addUserModal">
     <div class="modal-content">
         <div class="modal-header">
-            <h5 class="modal-title">Добавить пользователя</h5>
-            <button type="button" class="btn-close" onclick="closeModal('addUserModal')">×</button>
+            <h5 class="modal-title">Добавление пользователя</h5>
+            <button type="button" class="btn-close" onclick="userManagement.closeModal('addUserModal')">×</button>
         </div>
-        <form id="addUserForm" method="post" action="/admin/users/create">
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Имя</label>
-                    <input type="text" name="firstName" class="form-control" required>
+        <div class="modal-body">
+            <form id="addUserForm">
+                <div class="form-group mb-3">
+                    <label class="form-label">Email *</label>
+                    <input type="email" class="form-control" name="email" required>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Фамилия</label>
-                    <input type="text" name="lastName" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Отчество</label>
-                    <input type="text" name="surName" class="form-control">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Email (логин)</label>
-                    <input type="email" name="email" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Пароль</label>
-                    <input type="password" name="password" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Роли</label>
-                    <div style="display: flex; flex-direction: column; gap: 5px;">
-                        <label><input type="checkbox" name="roles" value="Admin"> Администратор</label>
-                        <label><input type="checkbox" name="roles" value="User"> Пользователь</label>
-                        <label><input type="checkbox" name="roles" value="Technician"> Техник</label>
-                        <label><input type="checkbox" name="roles" value="Seller"> Продавец</label>
-                        <label><input type="checkbox" name="roles" value="Buyer"> Покупатель</label>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label class="form-label">Имя</label>
+                            <input type="text" class="form-control" name="firstName">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label class="form-label">Фамилия</label>
+                            <input type="text" class="form-control" name="lastName">
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('addUserModal')">Отмена</button>
-                <button type="submit" class="btn btn-primary">Добавить</button>
-            </div>
-        </form>
+                <div class="form-group mb-3">
+                    <label class="form-label">Пароль *</label>
+                    <input type="password" class="form-control" name="password" required>
+                </div>
+                <div class="form-group mb-3">
+                    <label class="form-label">Подтверждение пароля *</label>
+                    <input type="password" class="form-control" name="confirmPassword" required>
+                </div>
+                <div class="form-group mb-3">
+                    <label class="form-label">Роль</label>
+                    <select class="form-select" name="role">
+                        <option value="">Без роли</option>
+                        <option value="admin">Администратор</option>
+                        <option value="technician">Техник</option>
+                        <option value="seller">Продавец</option>
+                        <option value="buyer">Покупатель</option>
+                        <option value="user">Пользователь</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="userManagement.closeModal('addUserModal')">
+                Отмена
+            </button>
+            <button type="button" class="btn btn-primary" onclick="userManagement.addUser()">
+                Добавить
+            </button>
+        </div>
     </div>
 </div>
 
-<!-- Модальное окно сброса пароля -->
 <div class="modal" id="resetPasswordModal">
     <div class="modal-content">
         <div class="modal-header">
             <h5 class="modal-title">Сброс пароля</h5>
-            <button type="button" class="btn-close" onclick="closeModal('resetPasswordModal')">×</button>
+            <button type="button" class="btn-close" onclick="userManagement.closeModal('resetPasswordModal')">×</button>
         </div>
-        <form id="resetPasswordForm">
-            <div class="modal-body">
-                <p>Сбросить пароль для пользователя: <strong id="resetUserName"></strong></p>
-                <div class="form-group">
-                    <label class="form-label">Новый пароль</label>
-                    <input type="password" id="newPassword" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Подтвердите пароль</label>
-                    <input type="password" id="confirmPassword" class="form-control" required>
-                </div>
-                <input type="hidden" id="resetUserId">
+        <div class="modal-body">
+            <div class="mb-3">
+                <p>Пользователь: <strong id="resetPasswordUserName"></strong></p>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('resetPasswordModal')">Отмена</button>
-                <button type="button" class="btn btn-primary" onclick="submitResetPassword()">Сбросить пароль</button>
-            </div>
-        </form>
+            <form id="resetPasswordForm">
+                <div class="form-group mb-3">
+                    <label class="form-label">Новый пароль *</label>
+                    <input type="password" class="form-control" name="newPassword" required>
+                </div>
+                <div class="form-group mb-3">
+                    <label class="form-label">Подтверждение пароля *</label>
+                    <input type="password" class="form-control" name="confirmPassword" required>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="userManagement.closeModal('resetPasswordModal')">
+                Отмена
+            </button>
+            <button type="button" class="btn btn-primary" onclick="userManagement.confirmResetPassword()">
+                Сбросить
+            </button>
+        </div>
     </div>
 </div>
 
-@functions {
-    public string GetInitials(string firstName, string lastName)
-    {
-        if (string.IsNullOrEmpty(firstName) || string.IsNullOrEmpty(lastName))
-            return "??";
-        
-        return $"{firstName[0]}{lastName[0]}".ToUpper();
-    }
-    
-    public string GetRoleClass(string role)
-    {
-        return role?.ToLower() switch
-        {
-            "admin" => "role-admin",
-            "user" => "role-user",
-            "technician" => "role-technician",
-            "seller" => "role-seller",
-            "buyer" => "role-buyer",
-            _ => "role-user"
-        };
-    }
+<div class="modal" id="rolesModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title">Управление ролями</h5>
+            <button type="button" class="btn-close" onclick="userManagement.closeModal('rolesModal')">×</button>
+        </div>
+        <div class="modal-body">
+            <div id="userRolesInfo" class="mb-3"></div>
+            <div class="form-group mb-3">
+                <label class="form-label">Добавить роль</label>
+                <select class="form-select" id="roleSelect">
+                    <option value="">Выберите роль</option>
+                    <option value="admin">Администратор</option>
+                    <option value="technician">Техник</option>
+                    <option value="seller">Продавец</option>
+                    <option value="buyer">Покупатель</option>
+                    <option value="user">Пользователь</option>
+                </select>
+            </div>
+            <button type="button" class="btn btn-outline-primary btn-sm mb-3" onclick="userManagement.addRoleToUser()">
+                Добавить роль
+            </button>
+            <div id="currentRoles" class="mt-3"></div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" onclick="userManagement.closeModal('rolesModal')">
+                Готово
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Модуль управления пользователями
+        const userManagement = (function() {
+            let currentUserId = null;
+            let currentUserName = null;
+            let allUsers = [];
+
+            // Инициализация
+            function init() {
+                setupFilterTags();
+                allUsers = Array.from(document.querySelectorAll('#usersTableBody tr'));
+                
+                // Закрытие модальных окон по клику вне их
+                window.addEventListener('click', function(event) {
+                    if (event.target.classList.contains('modal')) {
+                        closeModal(event.target.id);
+                    }
+                });
+            }
+
+            // Настройка фильтров
+            function setupFilterTags() {
+                const tags = document.querySelectorAll('.filter-tag');
+                tags.forEach(tag => {
+                    tag.addEventListener('click', function() {
+                        tags.forEach(t => t.classList.remove('active'));
+                        this.classList.add('active');
+                        filterUsers();
+                    });
+                });
+            }
+
+            // Фильтрация пользователей
+            function filterUsers() {
+                const searchText = document.getElementById('searchInput').value.toLowerCase();
+                const activeFilter = document.querySelector('.filter-tag.active').dataset.filter;
+                
+                allUsers.forEach(row => {
+                    const userName = row.querySelector('.user-name').textContent.toLowerCase();
+                    const userEmail = row.querySelector('.user-email').textContent.toLowerCase();
+                    const userRoles = row.dataset.roles.toLowerCase();
+                    const userStatus = row.dataset.status;
+                    
+                    let matchesSearch = searchText === '' || 
+                        userName.includes(searchText) || 
+                        userEmail.includes(searchText) ||
+                        userRoles.includes(searchText);
+                    
+                    let matchesFilter = true;
+                    if (activeFilter !== 'all') {
+                        if (activeFilter === 'active') {
+                            matchesFilter = userStatus === 'active';
+                        } else if (activeFilter === 'locked') {
+                            matchesFilter = userStatus === 'locked';
+                        } else {
+                            matchesFilter = userRoles.includes(activeFilter);
+                        }
+                    }
+                    
+                    row.style.display = matchesSearch && matchesFilter ? '' : 'none';
+                });
+            }
+
+            // Очистка поиска
+            function clearSearch() {
+                document.getElementById('searchInput').value = '';
+                filterUsers();
+            }
+
+            // Обновление списка пользователей
+            async function refreshUsers() {
+                try {
+                    window.location.reload();
+                } catch (error) {
+                    showNotification('Ошибка обновления списка пользователей', 'danger');
+                }
+            }
+
+            // Редактирование пользователя
+            async function editUser(userName) {
+                try {
+                    const response = await fetch(`/account/user?userId=${encodeURIComponent(userName)}`);
+                    if (response.ok) {
+                        const user = await response.json();
+                        showNotification('Редактирование пользователя: ' + user.userName, 'info');
+                    }
+                } catch (error) {
+                    showNotification('Ошибка загрузки данных пользователя', 'danger');
+                }
+            }
+
+            // Блокировка/разблокировка пользователя
+            async function toggleLock(userName) {
+                if (!confirm('Вы уверены, что хотите изменить статус блокировки пользователя?')) {
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`/account/toggle-lock/${userName}`, {
+                        method: 'POST'
+                    });
+                    
+                    if (response.ok) {
+                        showNotification('Статус блокировки изменен', 'success');
+                        setTimeout(() => window.location.reload(), 1000);
+                    } else {
+                        showNotification('Ошибка изменения статуса блокировки', 'danger');
+                    }
+                } catch (error) {
+                    showNotification('Ошибка при изменении статуса блокировки', 'danger');
+                }
+            }
+
+            // Сброс пароля
+            function resetPassword(userName) {
+                currentUserName = userName;
+                document.getElementById('resetPasswordUserName').textContent = userName;
+                showModal('resetPasswordModal');
+            }
+
+            // Подтверждение сброса пароля
+            async function confirmResetPassword() {
+                const form = document.getElementById('resetPasswordForm');
+                const newPassword = form.newPassword.value;
+                const confirmPassword = form.confirmPassword.value;
+                
+                if (!newPassword || !confirmPassword) {
+                    showNotification('Заполните все поля', 'warning');
+                    return;
+                }
+                
+                if (newPassword !== confirmPassword) {
+                    showNotification('Пароли не совпадают', 'warning');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`/account/reset-password/${currentUserName}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `newPassword=${encodeURIComponent(newPassword)}`
+                    });
+                    
+                    if (response.ok) {
+                        showNotification('Пароль успешно сброшен', 'success');
+                        closeModal('resetPasswordModal');
+                        form.reset();
+                    } else {
+                        showNotification('Ошибка сброса пароля', 'danger');
+                    }
+                } catch (error) {
+                    showNotification('Ошибка при сбросе пароля', 'danger');
+                }
+            }
+
+            // Управление ролями
+            async function manageRoles(userName) {
+                currentUserName = userName;
+                
+                try {
+                    const response = await fetch(`/account/user?userId=${encodeURIComponent(userName)}`);
+                    if (response.ok) {
+                        const user = await response.json();
+                        
+                        document.getElementById('userRolesInfo').innerHTML = `
+                            <strong>Пользователь:</strong> ${user.userName}<br>
+                            <strong>Email:</strong> ${user.email}
+                        `;
+                        
+                        if (user.roles && user.roles.length > 0) {
+                            const rolesHtml = user.roles.map(role => `
+                                <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                                    <span class="role-badge role-${role.toLowerCase()}">${role}</span>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="userManagement.removeRole('${role}')">
+                                        Удалить
+                                    </button>
+                                </div>
+                            `).join('');
+                            document.getElementById('currentRoles').innerHTML = rolesHtml;
+                        } else {
+                            document.getElementById('currentRoles').innerHTML = '<p class="text-muted">Роли не назначены</p>';
+                        }
+                        
+                        showModal('rolesModal');
+                    }
+                } catch (error) {
+                    showNotification('Ошибка загрузки ролей пользователя', 'danger');
+                }
+            }
+
+            // Добавление роли
+            async function addRoleToUser() {
+                const roleSelect = document.getElementById('roleSelect');
+                const role = roleSelect.value;
+                
+                if (!role) {
+                    showNotification('Выберите роль', 'warning');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`/account/setroles?userId=${currentUserName}&role=${role}`, {
+                        method: 'POST'
+                    });
+                    
+                    if (response.ok) {
+                        showNotification(`Роль "${role}" добавлена`, 'success');
+                        manageRoles(currentUserName);
+                        roleSelect.value = '';
+                    } else {
+                        showNotification('Ошибка добавления роли', 'danger');
+                    }
+                } catch (error) {
+                    showNotification('Ошибка при добавлении роли', 'danger');
+                }
+            }
+
+            // Удаление роли
+            async function removeRole(role) {
+                if (!confirm(`Удалить роль "${role}"?`)) {
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`/account/canselrole?userId=${currentUserName}&role=${role}`, {
+                        method: 'POST'
+                    });
+                    
+                    if (response.ok) {
+                        showNotification(`Роль "${role}" удалена`, 'success');
+                        manageRoles(currentUserName);
+                    } else {
+                        showNotification('Ошибка удаления роли', 'danger');
+                    }
+                } catch (error) {
+                    showNotification('Ошибка при удалении роли', 'danger');
+                }
+            }
+
+            // Добавление пользователя
+            async function addUser() {
+                const form = document.getElementById('addUserForm');
+                const formData = new FormData(form);
+                
+                if (!formData.get('email') || !formData.get('password') || !formData.get('confirmPassword')) {
+                    showNotification('Заполните обязательные поля', 'warning');
+                    return;
+                }
+                
+                if (formData.get('password') !== formData.get('confirmPassword')) {
+                    showNotification('Пароли не совпадают', 'warning');
+                    return;
+                }
+                
+                const userData = {
+                    Email: formData.get('email'),
+                    FirstName: formData.get('firstName'),
+                    LastName: formData.get('lastName'),
+                    Password: formData.get('password'),
+                    Role: formData.get('role')
+                };
+                
+                try {
+                    const response = await fetch('/account/register', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(userData)
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.text();
+                        showNotification('Пользователь успешно добавлен', 'success');
+                        closeModal('addUserModal');
+                        form.reset();
+                        setTimeout(() => window.location.reload(), 1000);
+                    } else {
+                        showNotification('Ошибка добавления пользователя', 'danger');
+                    }
+                } catch (error) {
+                    showNotification('Ошибка при добавлении пользователя', 'danger');
+                }
+            }
+
+            // Утилиты для работы с модальными окнами
+            function showModal(modalId) {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.classList.add('show');
+                }
+            }
+
+            function closeModal(modalId) {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.classList.remove('show');
+                }
+            }
+
+            function showAddUserModal() {
+                showModal('addUserModal');
+            }
+
+            // Показать уведомление
+            function showNotification(message, type = 'info') {
+                const notification = document.createElement('div');
+                notification.className = `notification ${type} show`;
+                notification.innerHTML = `
+                    ${message}
+                    <button onclick="this.parentElement.remove()" 
+                            style="margin-left: 10px; background: none; border: none; cursor: pointer; font-size: 18px;">✕</button>
+                `;
+                
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 5000);
+            }
+
+            // Публичные методы
+            return {
+                init,
+                showAddUserModal,
+                refreshUsers,
+                editUser,
+                toggleLock,
+                resetPassword,
+                confirmResetPassword,
+                manageRoles,
+                addRoleToUser,
+                removeRole,
+                addUser,
+                filterUsers,
+                clearSearch,
+                showModal,
+                closeModal
+            };
+        })();
+
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            userManagement.init();
+        });
+    </script>
 }
-
-<script>
-    // Фильтрация пользователей
-    function filterUsers(filter) {
-        // Обновляем активную кнопку фильтра
-        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active');
-        
-        // Показываем/скрываем строки в зависимости от фильтра
-        const rows = document.querySelectorAll('.user-row');
-        rows.forEach(row => {
-            let show = false;
-            
-            switch(filter) {
-                case 'all':
-                    show = true;
-                    break;
-                case 'admins':
-                    show = row.dataset.roles.includes('admin');
-                    break;
-                case 'locked':
-                    show = row.dataset.status === 'locked';
-                    break;
-                case 'unconfirmed':
-                    show = row.dataset.confirmed === 'false';
-                    break;
-            }
-            
-            row.style.display = show ? '' : 'none';
-        });
-    }
-    
-    // Поиск пользователей
-    function searchUsers(query) {
-        const searchTerm = query.toLowerCase();
-        const rows = document.querySelectorAll('.user-row');
-        
-        rows.forEach(row => {
-            const name = row.dataset.name;
-            const email = row.dataset.email;
-            const roles = row.dataset.roles;
-            
-            const matches = name.includes(searchTerm) || 
-                           email.includes(searchTerm) || 
-                           roles.includes(searchTerm);
-            
-            row.style.display = matches ? '' : 'none';
-        });
-    }
-    
-    // Модальные окна
-    function showAddUserModal() {
-        document.getElementById('addUserModal').style.display = 'flex';
-    }
-    
-    function showResetPasswordModal(userId, userName) {
-        document.getElementById('resetUserName').textContent = userName;
-        document.getElementById('resetUserId').value = userId;
-        document.getElementById('resetPasswordModal').style.display = 'flex';
-    }
-    
-    function closeModal(modalId) {
-        document.getElementById(modalId).style.display = 'none';
-    }
-    
-    // Блокировка/разблокировка пользователя
-    function toggleUserLock(userId) {
-        if (confirm('Вы уверены, что хотите изменить статус блокировки пользователя?')) {
-            fetch(`/admin/users/toggle-lock/${userId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            }).then(response => {
-                if (response.ok) {
-                    location.reload();
-                } else {
-                    alert('Ошибка при изменении статуса блокировки');
-                }
-            });
-        }
-    }
-    
-    // Сброс пароля
-    function submitResetPassword() {
-        const userId = document.getElementById('resetUserId').value;
-        const newPassword = document.getElementById('newPassword').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
-        
-        if (newPassword !== confirmPassword) {
-            alert('Пароли не совпадают!');
-            return;
-        }
-        
-        if (newPassword.length < 6) {
-            alert('Пароль должен содержать минимум 6 символов');
-            return;
-        }
-        
-        fetch(`/admin/users/reset-password/${userId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ newPassword: newPassword })
-        }).then(response => {
-            if (response.ok) {
-                alert('Пароль успешно сброшен');
-                closeModal('resetPasswordModal');
-                location.reload();
-            } else {
-                alert('Ошибка при сбросе пароля');
-            }
-        });
-    }
-    
-    // Закрытие модальных окон при клике вне их
-    window.onclick = function(event) {
-        if (event.target.classList.contains('modal-overlay')) {
-            event.target.style.display = 'none';
-        }
-    }
-    
-    // Закрытие по ESC
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape') {
-            document.querySelectorAll('.modal-overlay').forEach(modal => {
-                modal.style.display = 'none';
-            });
-        }
-    });
-
-       // ========== МОДАЛЬНЫЕ ОКНА ==========
-    function showModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.classList.add('show');
-            document.body.style.overflow = 'hidden'; // Блокируем скролл
-        }
-    }
-    
-    function closeModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.classList.remove('show');
-            document.body.style.overflow = ''; // Разблокируем скролл
-        }
-    }
-    
-    // Закрытие при клике вне модального окна
-    document.addEventListener('click', function(event) {
-        if (event.target.classList.contains('modal')) {
-            event.target.classList.remove('show');
-            document.body.style.overflow = '';
-        }
-    });
-    
-    // Закрытие при нажатии ESC
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape') {
-            document.querySelectorAll('.modal.show').forEach(modal => {
-                modal.classList.remove('show');
-                document.body.style.overflow = '';
-            });
-        }
-    });
-    
-    // Предотвращаем закрытие при клике внутри модального окна
-    document.querySelectorAll('.modal-content').forEach(content => {
-        content.addEventListener('click', function(event) {
-            event.stopPropagation();
-        });
-    });
-    
-    // ========== ПОЛЬЗОВАТЕЛЬСКИЕ ФУНКЦИИ ==========
-    function showAddUserModal() {
-        showModal('addUserModal');
-    }
-    
-    function showResetPasswordModal(userId, userName) {
-        document.getElementById('resetUserName').textContent = userName;
-        document.getElementById('resetUserId').value = userId;
-        showModal('resetPasswordModal');
-    }
-    
-    // ========== ФИЛЬТРАЦИЯ И ПОИСК ==========
-    function filterUsers(filter) {
-        // Обновляем активную кнопку фильтра
-        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active');
-        
-        const rows = document.querySelectorAll('.user-row');
-        rows.forEach(row => {
-            let show = false;
-            
-            switch(filter) {
-                case 'all':
-                    show = true;
-                    break;
-                case 'admins':
-                    show = row.dataset.roles.includes('admin');
-                    break;
-                case 'locked':
-                    show = row.dataset.status === 'locked';
-                    break;
-                case 'unconfirmed':
-                    show = row.dataset.confirmed === 'false';
-                    break;
-            }
-            
-            row.style.display = show ? '' : 'none';
-        });
-    }
-    
-    function searchUsers(query) {
-        const searchTerm = query.toLowerCase();
-        const rows = document.querySelectorAll('.user-row');
-        
-        rows.forEach(row => {
-            const matches = row.dataset.name.includes(searchTerm) || 
-                           row.dataset.email.includes(searchTerm) || 
-                           row.dataset.roles.includes(searchTerm);
-            
-            row.style.display = matches ? '' : 'none';
-        });
-    }
-    
-    // ========== ОПЕРАЦИИ С ПОЛЬЗОВАТЕЛЯМИ ==========
-    function toggleUserLock(userId) {
-        if (confirm('Вы уверены, что хотите изменить статус блокировки пользователя?')) {
-            fetch(`/admin/users/toggle-lock/${userId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            }).then(response => {
-                if (response.ok) {
-                    location.reload();
-                } else {
-                    alert('Ошибка при изменении статуса блокировки');
-                }
-            });
-        }
-    }
-    
-    function submitResetPassword() {
-        const userId = document.getElementById('resetUserId').value;
-        const newPassword = document.getElementById('newPassword').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
-        
-        if (newPassword !== confirmPassword) {
-            alert('Пароли не совпадают!');
-            return;
-        }
-        
-        if (newPassword.length < 6) {
-            alert('Пароль должен содержать минимум 6 символов');
-            return;
-        }
-        
-        fetch(`/admin/users/reset-password/${userId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ newPassword: newPassword })
-        }).then(response => {
-            if (response.ok) {
-                alert('Пароль успешно сброшен');
-                closeModal('resetPasswordModal');
-                location.reload();
-            } else {
-                alert('Ошибка при сбросе пароля');
-            }
-        });
-    }
-</script>

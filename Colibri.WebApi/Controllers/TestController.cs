@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Colibri.Data.Entity;
 using Colibri.Data.Helpers;
@@ -458,7 +457,7 @@ namespace Colibri.WebApi.Controllers
             try
             {
                 // logData содержит все поля из journald JSON
-                var message = logData.ContainsKey("MESSAGE") ? logData["MESSAGE"].ToString() : "No message";
+                var message = logData.TryGetValue("MESSAGE", out object value) ? value.ToString() : "No message";
                 var timestamp = logData.ContainsKey("__REALTIME_TIMESTAMP") ? logData["__REALTIME_TIMESTAMP"].ToString() : "";
                 var unit = logData.ContainsKey("_SYSTEMD_UNIT") ? logData["_SYSTEMD_UNIT"].ToString() : "";
                 

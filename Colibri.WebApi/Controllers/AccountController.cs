@@ -122,7 +122,7 @@ namespace Colibri.WebApi.Controllers
         /// <param name="role">Имя роли</param>
         /// <returns>Результат назначения роли. Возвращает <see cref="OkObjectResult"/> если роль установлена или <see cref="NotFoundResult"/> при ошибке.</returns>
         [HttpPost("setroles")]
-        [Authorize]
+       // [Authorize]
         public async Task<IActionResult> SetUserRole(string userId, string role)
         {
             try
@@ -214,24 +214,53 @@ namespace Colibri.WebApi.Controllers
         /// </summary>
         /// <param name="userId">Идентификатор пользователя</param>
         /// <returns>Возвращает данные пользователя в формате json</returns>
-        [HttpPost("user")]
-        [Authorize]
+       // [Authorize]
+        [HttpGet("user")]
         public async Task<IActionResult> GetUser(string userId)
         {
             try
             {
                 var user = await _account.GetByIdUserAsync(Guid.Parse(userId));
 
-                if (user == null) return BadRequest();
+                if (user == null) 
+                {
+                    return Json(new { error = "Пользователь не найден" });
+                }
+
+                // Получаем роли пользователя
+                var roles = await _account.GetUserRolesAsync(user);
+                
+                // Создаем DTO для ответа
+                var userDto = new 
+                {
+                    id = user.Id,
+                    userName = user.UserName,
+                    email = user.Email,
+                    firstName = user.FirstName,
+                    lastName = user.LastName,
+                    surName = user.SurName,
+                    lastLogin = user.LastLogin,
+                    emailConfirmed = user.EmailConfirmed,
+                    phoneNumberConfirmed = user.PhoneNumberConfirmed,
+                    twoFactorEnabled = user.TwoFactorEnabled,
+                    lockoutEnabled = user.LockoutEnabled,
+                    accessFailedCount = user.AccessFailedCount,
+                    roles = roles.ToList() // Преобразуем в список
+                };
 
                 _logger.LogMessage(User, $"Выгружен пользователь с логином: [{user.UserName}]", LogLevel.Information);
 
-                return Json(user);
+                return Json(userDto); // Теперь это чистый объект без циклических ссылок
             }
             catch (Exception ex)
             {
                 _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
-                return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
+                
+                // Возвращаем JSON с ошибкой, а не строку
+                return Json(new { 
+                    error = "Ошибка сервера", 
+                    message = ex.Message 
+                });
             }
         }
 
@@ -266,7 +295,7 @@ namespace Colibri.WebApi.Controllers
         /// <param name="role">Создаваемая роль</param>
         /// <returns>Результат создание роли. Возвращает <see cref="OkObjectResult"/> если роль создана или <see cref="BadRequestResult"/> при ошибке.</returns>
         [HttpPost("addrole")]
-        [Authorize]
+       // [Authorize]
         public async Task<IActionResult> SetRole(Role role)
         {
             try
@@ -286,7 +315,7 @@ namespace Colibri.WebApi.Controllers
             }
         }
 
-        [HttpGet("")]
+        [HttpGet()]
         public async Task<IActionResult> Index()
         {
             try
@@ -294,13 +323,15 @@ namespace Colibri.WebApi.Controllers
                 var users = await _account.GetUsersAsync();
 
                 var userViewModels = new List<UserModel>();
-        
+                
                 foreach (var user in users)
                 {
-                    var roles = await _account.GetRolsAsync();
+                    // ИСПРАВЛЕНО: получаем роли КОНКРЕТНОГО пользователя, а не все роли системы
+                    var userRoles = await _account.GetUserRolesAsync(user); // Используйте этот метод
                     
                     var userViewModel = new UserModel
                     {
+                        Id = user.Id,
                         UserName = user.UserName,
                         Email = user.Email,
                         FirstName = user.FirstName,
@@ -312,10 +343,16 @@ namespace Colibri.WebApi.Controllers
                         TwoFactorEnabled = user.TwoFactorEnabled,
                         LockoutEnabled = user.LockoutEnabled,
                         AccessFailedCount = user.AccessFailedCount,
-                        Roles = [.. roles.Select(x => x.Name)]
+                        Roles = userRoles.ToList() // Используем реальные роли пользователя
                     };
                     
                     userViewModels.Add(userViewModel);
+                    
+                    // Отладочный вывод
+                    Console.WriteLine($"Пользователь: {user.UserName}");
+                    Console.WriteLine($"  Email: {user.Email}");
+                    Console.WriteLine($"  LockoutEnabled: {user.LockoutEnabled}");
+                    Console.WriteLine($"  Роли: {(userRoles.Any() ? string.Join(", ", userRoles) : "нет")}");
                 }
 
                 return View(userViewModels);
@@ -327,6 +364,11 @@ namespace Colibri.WebApi.Controllers
             }
         }
 
+        /// <summary>
+        /// Получение данных конкретного пользователя
+        /// </summary>
+        /// <param name="id">Идентификатор пользователя</param>
+        /// <returns>Возвращает данные пользователя</returns>
         [HttpGet("details/{id}")]
         public async Task<IActionResult> Details(string id)
         {

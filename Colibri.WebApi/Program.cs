@@ -3,23 +3,18 @@ using Colibri.WebApi.Services.Abstract;
 using Colibri.WebApi.WebSokets;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using Serilog;
 using System;
+using System.IO;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Colibri.WebApi
 {
-    /// <summary>
-    /// 
-    /// </summary>
     public class Program
     {
-        /// <summary>
-        /// ����� ����� � ����������
-        /// </summary>
-        /// <param name="args"></param>
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
@@ -32,7 +27,7 @@ namespace Colibri.WebApi
             {
                 builder.Host.UseSerilog();
 
-                Log.Information("������ ����������");
+                Log.Information("Starting application");
 
                 BaseConfigure.Configuration(builder.Services, builder.Configuration);
                 AuthConfigure.Configuration(builder.Services, builder.Configuration);
@@ -41,22 +36,40 @@ namespace Colibri.WebApi
                 TransientConfigure.Configuration(builder.Services, builder.Configuration);
 
                 builder.Services.AddControllers();
-
                 builder.Services.AddSingleton<DroneWebSocketHandler>();
-
                 builder.Services.AddControllersWithViews();
 
                 var app = builder.Build();
-
-                app.UseStaticFiles();
-
-                app.UseWebSockets();
-
-                 app.Use(async (context, next) =>
+                
+                // Критически важно: статические файлы должны быть первыми!
+                // Явно указываем путь к wwwroot
+                var webRootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                
+                app.UseStaticFiles(new StaticFileOptions
                 {
-                    Console.WriteLine($"📨 Request: {context.Request.Method} {context.Request.Path}");
+                    FileProvider = new PhysicalFileProvider(webRootPath),
+                    RequestPath = "",
+                    ServeUnknownFileTypes = true,
+                    DefaultContentType = "application/octet-stream"
+                });
+                
+                Console.WriteLine($"Static files path: {webRootPath}");
+                Console.WriteLine($"Directory exists: {Directory.Exists(webRootPath)}");
+                
+                // Проверяем, существует ли файл CSS
+                var cssPath = Path.Combine(webRootPath, "css", "site.css");
+                Console.WriteLine($"CSS path: {cssPath}");
+                Console.WriteLine($"CSS exists: {File.Exists(cssPath)}");
+                
+                app.UseWebSockets();
+                
+                // WebSocket обработчики
+                app.Use(async (context, next) =>
+                {
+                    var path = context.Request.Path.Value ?? "";
                     
-                    if (context.Request.Path == "/ws/drone")
+                    // WebSocket для дрона
+                    if (path == "/ws/drone")
                     {
                         Console.WriteLine("🎯 WebSocket route matched!");
                         
@@ -71,10 +84,12 @@ namespace Colibri.WebApi
                             Console.WriteLine("❌ Not a WebSocket request");
                             context.Response.StatusCode = 400;
                         }
+                        return;
                     }
-                    else if (context.Request.Path == "/ws/status")
+                    
+                    // WebSocket для статуса
+                    else if (path == "/ws/status")
                     {
-                        // Альтернативный эндпоинт только для статуса
                         Console.WriteLine("🎯 Status WebSocket route matched!");
                         
                         if (context.WebSockets.IsWebSocketRequest)
@@ -85,11 +100,7 @@ namespace Colibri.WebApi
                             var statusService = context.RequestServices.GetRequiredService<IWebSocketStatusService>();
                             
                             statusService.AddConnection(webSocket);
-                            
-                            // Отправляем текущий статус сразу после подключения
                             await statusService.CheckDroneConnectionAsync();
-                            
-                            // Держим соединение открытым (упрощенная версия)
                             await KeepConnectionOpen(webSocket, statusService);
                         }
                         else
@@ -97,21 +108,23 @@ namespace Colibri.WebApi
                             Console.WriteLine("❌ Not a WebSocket request for status");
                             context.Response.StatusCode = 400;
                         }
+                        return;
                     }
-                    else
-                    {
-                        await next();
-                    }
+                    
+                    await next();
                 });
 
                 app.UseRouting();
-
                 app.UseAuthentication();
                 app.UseAuthorization();
 
                 app.MapControllers();
 
-                app.UseSwagger(); // Без кастомных настроек
+                app.MapControllerRoute(
+                    name: "default",
+                    pattern: "{controller=Home}/{action=Index}/{id?}");
+
+                app.UseSwagger();
                 app.UseSwaggerUI(c =>
                 {
                     c.SwaggerEndpoint("/swagger/v1/swagger.json", "API V1");
@@ -121,7 +134,7 @@ namespace Colibri.WebApi
             }
             catch(Exception ex)
             {
-                Log.Fatal(ex, "���������� ����������� � �������");
+                Log.Fatal(ex, "Application terminated unexpectedly");
             }
             finally
             {
@@ -137,7 +150,6 @@ namespace Colibri.WebApi
             {
                 while (webSocket.State == WebSocketState.Open)
                 {
-                    // Ждем сообщения от клиента (или закрытия соединения)
                     var result = await webSocket.ReceiveAsync(
                         new ArraySegment<byte>(buffer), 
                         CancellationToken.None);
@@ -151,13 +163,11 @@ namespace Colibri.WebApi
                         break;
                     }
 
-                    // Если клиент отправил сообщение, можно его обработать
                     if (result.MessageType == WebSocketMessageType.Text && result.Count > 0)
                     {
                         var message = System.Text.Encoding.UTF8.GetString(buffer, 0, result.Count);
                         Console.WriteLine($"Received from client: {message}");
                         
-                        // Если клиент запросил статус
                         if (message.Contains("\"type\":\"get_status\"") || message.Contains("status"))
                         {
                             await statusService.CheckDroneConnectionAsync();
@@ -175,7 +185,6 @@ namespace Colibri.WebApi
             }
             finally
             {
-                // Удаляем соединение из списка
                 statusService.RemoveConnection(webSocket);
                 webSocket?.Dispose();
                 Console.WriteLine("WebSocket connection closed");

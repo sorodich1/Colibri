@@ -3,9 +3,9 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Colibri</title>
+    <title>@ViewData[index: "Title"] - Colibri</title>
     
-    <link rel="stylesheet" href="/css/site.css">
+    <link rel="stylesheet" href="~/css/site.css">
     
     @RenderSection("Styles", required: false)
 </head>
@@ -32,5 +32,27 @@
     </div>
     
     @RenderSection("Scripts", required: false)
+    
+    <script>
+        // Глобальная функция для показа уведомлений
+        function showNotification(message, type = 'info') {
+            // Создаем уведомление
+            const notification = document.createElement('div');
+            notification.className = `notification ${type} show`;
+            notification.innerHTML = `
+                ${message}
+                <button onclick="this.parentElement.remove()" 
+                        style="margin-left: 10px; background: none; border: none; cursor: pointer; font-size: 18px;">✕</button>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+    </script>
 </body>
 </html>
