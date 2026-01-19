@@ -99,7 +99,7 @@ namespace Colibri.Data.Services
         {
             try
             {
-                return await _context.Orders.ToListAsync();
+                return await _context.Orders.Where(x => !x.IsDeleted).ToListAsync();
             }
             catch (Exception ex)
             {
@@ -162,6 +162,7 @@ namespace Colibri.Data.Services
                 throw new InvalidOperationException("Ошибка выборки из базы данных товара по имени пользователя", ex);
             }
         }
+        
         /// <summary>
         /// Получает список всех продуктов.
         /// </summary>
@@ -171,7 +172,7 @@ namespace Colibri.Data.Services
         {
             try
             {
-                return await _context.Products.ToListAsync();
+                return await _context.Products.Where(x => !x.IsDeleted).ToListAsync();
             }
             catch (Exception ex)
             {

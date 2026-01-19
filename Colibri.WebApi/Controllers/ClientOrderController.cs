@@ -116,7 +116,7 @@ namespace Colibri.WebApi.Controllers
                     ProductId = orderModel.ProductId,
                     Quentity = orderModel.Quentity,
                     UserId = orderModel.UserId,
-                    Status = OrderStatus.Created.ToString(),
+                    Status = OrderStatus.PREPARING.ToString(),
                     CreatedBy = User.Identity.Name,
                     CreatedAt = createdDate, // Добавляем дату создания
                     UpdatedAt = createdDate
@@ -258,10 +258,10 @@ namespace Colibri.WebApi.Controllers
 
                 // Проверка, что пользователь имеет право удалять этот заказ
                 var currentUser = await _accountService.GetByNameUserAsync(User.Identity.Name);
-                if (order.UserId.ToGuid() != currentUser.Id && !User.IsInRole("Admin"))
-                {
-                    return Forbid("У вас нет прав для удаления этого заказа");
-                }
+                // if (order.UserId.ToGuid() != currentUser.Id && !User.IsInRole("Admin"))
+                // {
+                //     return Forbid("У вас нет прав для удаления этого заказа");
+                // }
 
                 var result = await _clientOrder.DeleteOrderAsync(orderId);
                 
