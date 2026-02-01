@@ -26,23 +26,23 @@ public class WebSocketStatusService(IDroneConnectionService droneConnectionServi
 
     public async Task CheckDroneConnectionAsync()
     {
-            try
-            {
-                // Проверяем соединение с дроном
-                var result = await _droneConnectionService.SendCommandToDrone("status", null);
+        try
+        {
+            // Проверяем соединение с дроном
+            var result = await _droneConnectionService.SendCommandToDrone("status", null);
                 
-                var status = result.Success ? "connected" : "disconnected";
+            var status = result.Success ? "connected" : "disconnected";
                 
                 // Отправляем статус всем подключенным клиентам
-                await SendStatusToAllAsync(status);
+            await SendStatusToAllAsync(status);
                 
-                _logger.LogInformation($"Drone connection status: {status}");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error checking drone connection: {ex.Message}");
-                await SendStatusToAllAsync("error");
-            }
+            _logger.LogInformation($"Drone connection status: {status}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error checking drone connection: {ex.Message}");
+            await SendStatusToAllAsync("error");
+        }
     }
 
     public void Dispose()

@@ -9,7 +9,6 @@ using Colibri.Data.Helpers;
 using Colibri.Data.Services.Abstracts;
 using Colibri.WebApi.Models;
 using Colibri.WebApi.Services.Abstract;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -101,6 +100,11 @@ namespace Colibri.WebApi.Controllers
             }
         }
 
+        /// <summary>
+        /// Выбран цвет с определённым номером
+        /// </summary>
+        /// <param name="colorNumber"></param>
+        /// <returns></returns>
         [HttpPost("BacklightTesting")]
         public async Task<IActionResult> BacklightTesting(int colorNumber)
         {

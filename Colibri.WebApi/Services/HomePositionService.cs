@@ -116,7 +116,7 @@ public class HomePositionService : IHomePositionService
                     Longitude = (double)homeData.Longitude
                 };
                 
-                _logger.LogMessage(null, $"Домашняя позиция загружена из файла: {HOME_POSITION_FILE}", LogLevel.Debug);
+               // _logger.LogMessage(null, $"Домашняя позиция загружена из файла: {HOME_POSITION_FILE}", LogLevel.Debug);
                 return position;
             }
         }

@@ -81,12 +81,14 @@ namespace Colibri.WebApi.Controllers
         /// <summary>
         /// Открытие/закрытие бокса дрона
         /// </summary>
-       // [Authorize]
+        [Authorize]
         [HttpPost("openbox")]
-        public async Task<IActionResult> OpenBox(bool isActive)
+        public async Task<IActionResult> OpenBox([FromBody] bool isActive)
         {
             try
             {
+                _logger.LogMessage(User, $"Открытие бокса дрона - {isActive}", LogLevel.Information);
+                
                 // Логируем событие в БД
                 var registration = new EventRegistration
                 {

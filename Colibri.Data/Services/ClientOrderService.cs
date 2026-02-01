@@ -66,7 +66,7 @@ namespace Colibri.Data.Services
         {
             try
             {
-                return await _context.Orders.FindAsync(id);
+                return await _context.Orders.FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted);
             }
             catch (Exception ex)
             {
@@ -83,7 +83,7 @@ namespace Colibri.Data.Services
         {
             try
             {
-                return await _context.Orders.Where(x => x.UserId.ToGuid() == user.Id).ToListAsync();
+                return await _context.Orders.Where(x => x.UserId.ToGuid() == user.Id && !x.IsDeleted).ToListAsync();
             }
             catch (Exception ex)
             {
@@ -99,7 +99,7 @@ namespace Colibri.Data.Services
         {
             try
             {
-                return await _context.Orders.ToListAsync();
+                return await _context.Orders.Where(x => !x.IsDeleted).ToListAsync();
             }
             catch (Exception ex)
             {
@@ -118,7 +118,7 @@ namespace Colibri.Data.Services
             try
             {
                 return await _context.Orders
-                    .Where(x => x.UserId.ToGuid() == user.Id)
+                    .Where(x => x.UserId.ToGuid() == user.Id && x.IsDeleted)
                     .OrderByDescending(x => x.CreatedAt)
                     .Take(5)
                     .ToListAsync();
@@ -138,7 +138,7 @@ namespace Colibri.Data.Services
         {
             try
             {
-                return await _context.Products.FindAsync(id);
+                return await _context.Products.FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted);
             }
             catch (Exception ex)
             {
@@ -155,7 +155,7 @@ namespace Colibri.Data.Services
         {
             try
             {
-                return await _context.Products.Where(x => x.UserId == user.Id).ToListAsync();
+                return await _context.Products.Where(x => x.UserId == user.Id && !x.IsDeleted).ToListAsync();
             }
             catch (Exception ex)
             {
@@ -171,7 +171,7 @@ namespace Colibri.Data.Services
         {
             try
             {
-                return await _context.Products.ToListAsync();
+                return await _context.Products.Where(x => !x.IsDeleted).ToListAsync();
             }
             catch (Exception ex)
             {

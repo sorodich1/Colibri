@@ -19,12 +19,12 @@ namespace Colibri.WebApi.Controllers
     /// </summary>
     [Route("account")]
     [ApiController]
-    public class AccountController(IAccountService account, IJwtGenerator jwtGenerator, ILoggerService logger, UserManager<User> manager) : Controller
+    public class AccountController(IAccountService account, IJwtGenerator jwtGenerator, UserManager<User> manager, ILogger<AccountController> logger) : Controller
     {
         private readonly IAccountService _account = account;
-        private readonly ILoggerService _logger = logger;
         private readonly IJwtGenerator _jwtGenerator = jwtGenerator;
         private readonly UserManager<User> _manager = manager;
+        private readonly ILogger<AccountController> _logger = logger;
         /// <summary>
         /// Регистрирует нового пользователя с указанными данными.
         /// </summary>
@@ -46,7 +46,8 @@ namespace Colibri.WebApi.Controllers
                     Email = register.Email,
                     NormalizedUserName = register.Email.ToUpper(),
                     FirstName = register.FirstName ?? null,
-                    LastName = register.LastName ?? null
+                    LastName = register.LastName ?? null,
+                    PhoneNumber = register.PhoneNumber ?? null
                 };
 
                 var result = await _account.AddUserAsync(user, register.Password);
@@ -59,18 +60,18 @@ namespace Colibri.WebApi.Controllers
 
                         if(roleResult)
                         {
-                            _logger.LogMessage(User, $"Пользователь зарегистрирован с ролью: [{register.Role}]", LogLevel.Information);
+                            _logger.LogInformation($"Пользователь зарегистрирован с ролью: [{register.Role}]");
                             return Ok(new { Message = $"Регистрация прошла успешно. Роль '{register.Role}' назначена." });
                         }
                         else
                         {
-                            _logger.LogMessage(User, $"Пользователь зарегистрирован, но не удалось назначить роль: [{register.Role}]", LogLevel.Warning);
+                            _logger.LogWarning($"Пользователь зарегистрирован, но не удалось назначить роль: [{register.Role}]");
                             return Ok(new { Message = "Регистрация прошла успешно, но не удалось назначить роль." });
                         }
                     }
                     else
                     {
-                        _logger.LogMessage(User, "Пользователь зарегистрирован без роли", LogLevel.Information);
+                        _logger.LogWarning("Пользователь зарегистрирован без роли");
                         return Ok(new { Message = "Регистрация прошла успешно" });
                     }
                 }
@@ -78,7 +79,6 @@ namespace Colibri.WebApi.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
                 return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
             }
         }
@@ -100,7 +100,6 @@ namespace Colibri.WebApi.Controllers
 
                     var token = _jwtGenerator.Seed(user.UserName, roles);
 
-                    _logger.LogMessage(User, $"Пользователь аутентифицирован - получен токен - [{token}]", LogLevel.Information);
 
                     return Ok(new { Token = token });
                 }
@@ -111,7 +110,6 @@ namespace Colibri.WebApi.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
                 return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
             }
         }
@@ -135,18 +133,15 @@ namespace Colibri.WebApi.Controllers
 
                 if (result)
                 {
-                    _logger.LogMessage(User, $"Пользователю назначена роль: [{role}]", LogLevel.Information);
                     return Ok(result);
                 }
                 else
                 {
-                    _logger.LogMessage(User, $"Роль: [{role}] уже назначена пользователю", LogLevel.Information);
                     return NotFound("Роль существует");
                 }
             }
             catch(Exception ex)
             {
-                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
                 return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
             }
         }
@@ -170,18 +165,15 @@ namespace Colibri.WebApi.Controllers
 
                 if (result)
                 {
-                    _logger.LogMessage(User, $"С пользователя снята роль: [{role}]", LogLevel.Information);
                     return Ok(result);
                 }
                 else
                 {
-                    _logger.LogMessage(User, $"Роли у пользователя не существует: [{role}]", LogLevel.Information);
                     return NotFound();
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
                 return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
             }
         }
@@ -199,13 +191,11 @@ namespace Colibri.WebApi.Controllers
 
                 if (users.Count == 0) return BadRequest();
 
-                _logger.LogMessage(User, $"Выгружены пользователи в колличестве: [{users.Count}]", LogLevel.Information);
 
                 return Json(users);
             }
             catch (Exception ex)
             {
-                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
                 return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
             }
         }
@@ -245,16 +235,15 @@ namespace Colibri.WebApi.Controllers
                     twoFactorEnabled = user.TwoFactorEnabled,
                     lockoutEnabled = user.LockoutEnabled,
                     accessFailedCount = user.AccessFailedCount,
+                    phoneNumber = user.PhoneNumber,
                     roles = roles.ToList() // Преобразуем в список
                 };
 
-                _logger.LogMessage(User, $"Выгружен пользователь с логином: [{user.UserName}]", LogLevel.Information);
 
                 return Json(userDto); // Теперь это чистый объект без циклических ссылок
             }
             catch (Exception ex)
             {
-                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
                 
                 // Возвращаем JSON с ошибкой, а не строку
                 return Json(new { 
@@ -279,13 +268,11 @@ namespace Colibri.WebApi.Controllers
 
                 if (user == null) return BadRequest();
 
-                _logger.LogMessage(User, $"Выгружен пользователь с логином: [{user.UserName}]", LogLevel.Information);
 
                 return Json(user);
             }
             catch (Exception ex)
             {
-                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
                 return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
             }
         }
@@ -304,13 +291,11 @@ namespace Colibri.WebApi.Controllers
 
                 if (!result) return BadRequest();
 
-                _logger.LogMessage(User, $"Создана роль с именем: [{role.Name}]", LogLevel.Information);
 
                 return Ok("Роль создана");
             }
             catch (Exception ex)
             {
-                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
                 return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
             }
         }
@@ -343,16 +328,10 @@ namespace Colibri.WebApi.Controllers
                         TwoFactorEnabled = user.TwoFactorEnabled,
                         LockoutEnabled = user.LockoutEnabled,
                         AccessFailedCount = user.AccessFailedCount,
-                        Roles = userRoles.ToList() // Используем реальные роли пользователя
+                        Roles = [.. userRoles] // Используем реальные роли пользователя
                     };
                     
                     userViewModels.Add(userViewModel);
-                    
-                    // Отладочный вывод
-                    Console.WriteLine($"Пользователь: {user.UserName}");
-                    Console.WriteLine($"  Email: {user.Email}");
-                    Console.WriteLine($"  LockoutEnabled: {user.LockoutEnabled}");
-                    Console.WriteLine($"  Роли: {(userRoles.Any() ? string.Join(", ", userRoles) : "нет")}");
                 }
 
                 return View(userViewModels);
@@ -469,6 +448,80 @@ namespace Colibri.WebApi.Controllers
             {
                 TempData["Error"] = $"Ошибка сброса пароля: {ex.Message}";
                 return RedirectToAction("Details", new { id });
+            }
+        }
+        /// <summary>
+        /// Обнавления пользователя
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+       [HttpPut("updateuser")]
+        [Produces("application/json")]
+        public async Task<IActionResult> UpdateUserProfile(UpdateProfileRequest request)
+        {
+            try
+            {
+                var nameUser = User.Identity.Name;
+                var user = await _account.GetByNameUserAsync(nameUser);
+                if (user == null)
+                {
+                    return NotFound("Пользователь не найден");
+                }
+
+                bool updated = false;
+
+                // Обновление личных данных
+                if (!string.IsNullOrEmpty(request.FirstName) && request.FirstName != user.FirstName)
+                {
+                    user.FirstName = request.FirstName;
+                    updated = true;
+                }
+
+                if (!string.IsNullOrEmpty(request.LastName) && request.LastName != user.LastName)
+                {
+                    user.LastName = request.LastName;
+                    updated = true;
+                }
+
+                // Обновление телефона
+                if (!string.IsNullOrEmpty(request.PhoneNumber) && request.PhoneNumber != user.PhoneNumber)
+                {
+                    user.PhoneNumber = request.PhoneNumber;
+                    user.PhoneNumberConfirmed = false;
+                    updated = true;
+                }
+
+                if (updated)
+                {
+                    var result = await _account.UpdateUserAsync(user);
+                    if (!result)
+                    {
+                        // Возвращаем более информативное сообщение
+                        return BadRequest(new 
+                        { 
+                            message = "Ошибка обновления профиля",
+                            details = "Проверьте введенные данные"
+                        });
+                    }
+                    
+                    _logger.LogInformation("Профиль пользователя {UserId} обновлен", user.Id);
+                }
+                else
+                {
+                    _logger.LogDebug("Нет изменений для пользователя {UserId}", user.Id);
+                }
+
+                
+                return Ok("success");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Непредвиденная ошибка в UpdateUserProfile");
+                return StatusCode(500, new 
+                { 
+                    message = "Внутренняя ошибка сервера",
+                    error = ex.Message 
+                });
             }
         }
     }

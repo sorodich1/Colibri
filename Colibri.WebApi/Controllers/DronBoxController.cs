@@ -33,7 +33,7 @@ namespace Colibri.WebApi.Controllers
         /// <param name="active"></param>
         /// <returns></returns>
         [HttpPost("roof")]
-        public async Task<IActionResult> Roof(bool active)
+        public async Task<IActionResult> Roof([FromBody]bool active)
         {
             try
             {
@@ -72,7 +72,7 @@ namespace Colibri.WebApi.Controllers
         /// <param name="isCenter">Статус кнопки</param>
         /// <returns></returns>
         [HttpPost("position")]
-        public async Task<IActionResult> SetPosition(bool isCenter)
+        public async Task<IActionResult> SetPosition([FromBody]bool isCenter)
         {
             try
             {
@@ -105,7 +105,7 @@ namespace Colibri.WebApi.Controllers
         /// <param name="isUp">Статус кнопки</param>
         /// <returns></returns>
         [HttpPost("table")]
-        public async Task<IActionResult> SetTable(bool isUp)
+        public async Task<IActionResult> SetTable([FromBody]bool isUp)
         {
             try
             {
@@ -137,8 +137,8 @@ namespace Colibri.WebApi.Controllers
         /// </summary>
         /// <param name="isOpen">Статус кнопки</param>
         /// <returns></returns>
-        [HttpPost("luke")]
-        public async Task<IActionResult> SetLuke(bool isOpen)
+        [HttpPost("hatch")]
+        public async Task<IActionResult> SetLuke([FromBody]bool isOpen)
         {
             try
             {
@@ -170,8 +170,8 @@ namespace Colibri.WebApi.Controllers
         /// </summary>
         /// <param name="isInstall">Статус кнопки</param>
         /// <returns></returns>
-        [HttpPost("drone_battery")]
-        public async Task<IActionResult> SetDroneBattery(bool isInstall)
+        [HttpPost("dronebattery")]
+        public async Task<IActionResult> SetDroneBattery([FromBody]bool isInstall)
         {
             try
             {
@@ -204,7 +204,7 @@ namespace Colibri.WebApi.Controllers
         /// <param name="isInstall">Статус кнопки</param>
         /// <returns></returns>
         [HttpPost("battery1")]
-        public async Task<IActionResult> SetBattery1(bool isInstall)
+        public async Task<IActionResult> SetBattery1([FromBody]bool isInstall)
         {
             try
             {
@@ -237,7 +237,7 @@ namespace Colibri.WebApi.Controllers
         /// <param name="isOn">Статус кнопки</param>
         /// <returns></returns>
         [HttpPost("battery1_charger")]
-        public async Task<IActionResult> SetBattery1Charger(bool isOn)
+        public async Task<IActionResult> SetBattery1Charger([FromBody]bool isOn)
         {
             try
             {
@@ -270,7 +270,7 @@ namespace Colibri.WebApi.Controllers
         /// <param name="isInstall">Статус кнопки</param>
         /// <returns></returns>
         [HttpPost("battery2")]
-        public async Task<IActionResult> SetBattery2(bool isInstall)
+        public async Task<IActionResult> SetBattery2([FromBody]bool isInstall)
         {
             try
             {
@@ -303,7 +303,7 @@ namespace Colibri.WebApi.Controllers
         /// <param name="isOn">Статус кнопки</param>
         /// <returns></returns>
         [HttpPost("battery2_charger")]
-        public async Task<IActionResult> SetBattery2Charger(bool isOn)
+        public async Task<IActionResult> SetBattery2Charger([FromBody]bool isOn)
         {
             try
             {
@@ -336,7 +336,7 @@ namespace Colibri.WebApi.Controllers
         /// <param name="isInstall">Статус кнопки</param>
         /// <returns></returns>
         [HttpPost("battery3")]
-        public async Task<IActionResult> SetBattery3(bool isInstall)
+        public async Task<IActionResult> SetBattery3([FromBody]bool isInstall)
         {
             try
             {
@@ -369,7 +369,7 @@ namespace Colibri.WebApi.Controllers
         /// <param name="isOn">Статус кнопки</param>
         /// <returns></returns>
         [HttpPost("battery3_charger")]
-        public async Task<IActionResult> SetBattery3Charger(bool isOn)
+        public async Task<IActionResult> SetBattery3Charger([FromBody]bool isOn)
         {
             try
             {

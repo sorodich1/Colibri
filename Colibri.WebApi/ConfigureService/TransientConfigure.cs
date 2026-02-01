@@ -23,7 +23,6 @@ namespace Colibri.WebApi.ConfigureService
         /// <param name="configuration"></param>
         public static void Configuration(IServiceCollection services, IConfiguration configuration)
         {
-            services.AddTransient<IAccountService, AccountService>();
             services.AddTransient<ILoggerService, LoggerService>();
             services.AddTransient<IAppDbContext, AppDbContext>();
             services.AddTransient<IClientOrderService, ClientOrderService>();
@@ -36,6 +35,15 @@ namespace Colibri.WebApi.ConfigureService
             services.AddTransient<IHomePositionService, HomePositionService>();
             services.AddSingleton<IWebSocketStatusService, WebSocketStatusService>();
             services.AddSingleton<DroneWebSocketHandler>();
+            services.AddHostedService<DroneBoxBackgroundService>();
+            services.AddTransient<IAccountService, AccountService>();
+
+            
+
+
+            services.AddSingleton<IDroneBoxStatusService, DroneBoxStatusService>();
+            services.AddScoped<IPingService, PingService>();
+            services.AddSingleton<DroneBoxStatusService>();
 
             services.AddTransient<IJwtGenerator>(provider =>
             new JwtGenerator(

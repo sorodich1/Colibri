@@ -258,10 +258,6 @@ namespace Colibri.WebApi.Controllers
 
                 // Проверка, что пользователь имеет право удалять этот заказ
                 var currentUser = await _accountService.GetByNameUserAsync(User.Identity.Name);
-                if (order.UserId.ToGuid() != currentUser.Id && !User.IsInRole("Admin"))
-                {
-                    return Forbid("У вас нет прав для удаления этого заказа");
-                }
 
                 var result = await _clientOrder.DeleteOrderAsync(orderId);
                 
@@ -301,10 +297,6 @@ namespace Colibri.WebApi.Controllers
 
                 // Проверка, что пользователь имеет право удалять этот продукт
                 var currentUser = await _accountService.GetByNameUserAsync(User.Identity.Name);
-                if (product.UserId != currentUser.Id && !User.IsInRole("Admin"))
-                {
-                    return Forbid("У вас нет прав для удаления этого продукта");
-                }
 
                 var result = await _clientOrder.DeleteProductAsync(productId);
                 

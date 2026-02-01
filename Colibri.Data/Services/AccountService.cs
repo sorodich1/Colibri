@@ -2,8 +2,10 @@
 using Colibri.Data.Services.Abstracts;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Colibri.Data.Services
@@ -335,11 +337,17 @@ namespace Colibri.Data.Services
             try
             {
                 var result = await _userManager.UpdateAsync(user);
-                return result.Succeeded;
+                
+                if (!result.Succeeded)
+                {
+                    return false;
+                }
+                
+                return true;
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException("Ошибка обнавления пользователя", ex);
+                throw new InvalidOperationException($"Ошибка обновления пользователя {user.Id}", ex);
             }
         }
     }
