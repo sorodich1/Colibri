@@ -162,6 +162,7 @@ namespace Colibri.Data.Services
                 throw new InvalidOperationException("Ошибка выборки из базы данных товара по имени пользователя", ex);
             }
         }
+        
         /// <summary>
         /// Получает список всех продуктов.
         /// </summary>

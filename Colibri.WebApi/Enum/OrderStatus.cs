@@ -11,36 +11,16 @@ namespace Colibri.WebApi.Enum
         /// аказ создан
         /// </summary>
         [Display(Name = "Заказ создан")]
-        Created,
+        PREPARING,
         /// <summary>
         /// заказ вылетел
         /// </summary>
         [Display(Name = "Заказ вылетел")]
-        Dispatched,
-        /// <summary>
-        /// Заказ в пути
-        /// </summary>
-        [Display(Name = "Заказ в пути")]
-        InTransit,
-        /// <summary>
-        /// Заказ прибудет через 3 минуты
-        /// </summary>
-        [Display(Name = "Заказ прибудет через 3 минуты")]
-        ArrivingSoon,
+        IN_TRANSIT,
         /// <summary>
         /// Заказ прибыл
         /// </summary>
         [Display(Name = "Заказ прибыл")]
-        Arrived,
-        /// <summary>
-        /// Заказ завершён
-        /// </summary>
-        [Display(Name = "Заказ завершён")]
-        Completed,
-        /// <summary>
-        /// Заказ отменён
-        /// </summary>
-        [Display(Name = "Заказ отменён")]
-        Canceled
+        DELIVERED
     }
 }
