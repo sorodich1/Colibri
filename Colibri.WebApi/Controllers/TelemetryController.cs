@@ -142,7 +142,6 @@ namespace Colibri.WebApi.Controllers
             {
                 if (telemetryDto == null)
                 {
-                    _logger.LogMessage(User, $"Получен пустой запрос телеметрии", LogLevel.Error);
                     return BadRequest(new { error = "Пустой запрос" });
                 }
 

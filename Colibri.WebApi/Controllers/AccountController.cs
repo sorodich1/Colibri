@@ -190,7 +190,7 @@ namespace Colibri.WebApi.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogMessage(User, $"Ошибка получения ролей пользователя: {ex.Message}", LogLevel.Error);
+               // _logger.LogMessage(User, $"Ошибка получения ролей пользователя: {ex.Message}", LogLevel.Error);
                 return StatusCode(500, new { error = "Ошибка сервера", message = ex.Message });
             }
         }
