@@ -2,7 +2,6 @@
 using Colibri.Data.Entity;
 using Colibri.Data.Helpers;
 using Colibri.Data.Services.Abstracts;
-using Colibri.WebApi.Enum;
 using Colibri.WebApi.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -116,7 +115,7 @@ namespace Colibri.WebApi.Controllers
                     ProductId = orderModel.ProductId,
                     Quentity = orderModel.Quentity,
                     UserId = orderModel.UserId,
-                    Status = OrderStatus.PREPARING.ToString(),
+                    Status = "",
                     CreatedBy = User.Identity.Name,
                     CreatedAt = createdDate, // Добавляем дату создания
                     UpdatedAt = createdDate

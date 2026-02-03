@@ -145,6 +145,56 @@ namespace Colibri.WebApi.Controllers
                 return Ok(Auxiliary.GetDetailedExceptionMessage(ex));
             }
         }
+
+        /// <summary>
+        /// Получение ролей пользователя по email или имени пользователя
+        /// </summary>
+        /// <param name="userIdentifier">Email или имя пользователя</param>
+        /// <returns>Список ролей пользователя</returns>
+        [HttpGet("user-roles-by-identifier")]
+        [Authorize]
+        public async Task<IActionResult> GetUserRolesByIdentifier([FromQuery] string userIdentifier)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(userIdentifier))
+                {
+                    return BadRequest(new { error = "Не указан идентификатор пользователя" });
+                }
+
+                User user;
+                
+                // Пытаемся найти по email
+                user = await _account.GetByNameUserAsync(userIdentifier);
+                
+                // Если не нашли по email, пытаемся найти по UserName
+                if (user == null)
+                {
+                    user = await _manager.FindByNameAsync(userIdentifier);
+                }
+
+                if (user == null)
+                {
+                    return NotFound(new { error = "Пользователь не найден" });
+                }
+
+                var roles = await _account.GetUserRolesAsync(user);
+                
+                return Ok(new
+                {
+                    userId = user.Id,
+                    userName = user.UserName,
+                    email = user.Email,
+                    roles = roles.ToList()
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogMessage(User, $"Ошибка получения ролей пользователя: {ex.Message}", LogLevel.Error);
+                return StatusCode(500, new { error = "Ошибка сервера", message = ex.Message });
+            }
+        }
+
         /// <summary>
         /// Удаление роли у пользователя
         /// </summary>
