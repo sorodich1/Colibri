@@ -8,10 +8,15 @@ namespace Colibri.WebApi.Enum
     public enum OrderStatus
     {
         /// <summary>
-        /// аказ создан
+        /// заказ создан
         /// </summary>
         [Display(Name = "Заказ создан")]
         PREPARING,
+        /// <summary>
+        /// заказ Собирается
+        /// </summary>
+        [Display(Name = "Заказ собирается")]
+        IS_GOING_TO,
         /// <summary>
         /// заказ вылетел
         /// </summary>

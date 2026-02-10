@@ -23,11 +23,11 @@ namespace Colibri.Data.Entity
         /// <summary>
         /// Широта места доставки
         /// </summary>
-        public decimal DeliveryLatitude { get; set; }
+        public double DeliveryLatitude { get; set; }
         /// <summary>
         /// Долгота места доставки
         /// </summary>
-        public decimal DeliveryLongitude { get; set; }
+        public double DeliveryLongitude { get; set; }
         /// <summary>
         /// 
         /// Статус доставки
