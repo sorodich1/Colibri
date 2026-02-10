@@ -15,9 +15,9 @@ public class DroneConnectionService : IDroneConnectionService
     private readonly ILogger<DroneConnectionService> _logger;
 
     // Фиксированный URL дрона из контроллера
-   private const string DRONE_BASE_URL = "http://85.141.101.21:8080";
+   //private const string DRONE_BASE_URL = "http://85.141.101.21:8080";
 
-    //private const string DRONE_BASE_URL = "http://78.25.108.95:8080";
+    private const string DRONE_BASE_URL = "http://78.25.108.95:8080";
 
     public DroneConnectionService(IHttpConnectService httpConnect, ILogger<DroneConnectionService> logger)
     {
