@@ -78,6 +78,13 @@ namespace Colibri.WebApi
                                 await handler.HandleWebSocketConnection(context);
                                 return;
                             }
+                            else if (path == "/ws/orders")
+                            {
+                                // Для статусов заказов
+                                var handler = context.RequestServices.GetRequiredService<OrderWebSocketHandler>();
+                                await handler.HandleWebSocketConnection(context);
+                                return;
+                            }
                             else
                             {
                                 Console.WriteLine($"❌ Unknown WebSocket path: {path}");

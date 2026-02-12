@@ -20,10 +20,10 @@
         /// <summary>
         /// Широта точки доставки
         /// </summary>
-        public decimal DeliveryLatitude { get; set; }
+        public double DeliveryLatitude { get; set; }
         /// <summary>
         /// Долгота точки доставки
         /// </summary>
-        public decimal DeliveryLongitude { get; set; }
+        public double DeliveryLongitude { get; set; }
     }
 }

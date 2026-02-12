@@ -16,7 +16,7 @@ namespace Colibri.WebApi.Services
         private readonly ConcurrentDictionary<WebSocket, byte> _connectedSockets = new();
         private readonly ILogger<DroneBoxStatusService> _logger;
         private readonly IPingService _pingService;
-        private const string DRONE_BOX_IP = "37.29.71.91";//"37.29.40.50";
+        private const string DRONE_BOX_IP = "37.29.71.91"; // "37.29.40.50"; 
 
         public DroneBoxStatusService(
             ILogger<DroneBoxStatusService> logger,

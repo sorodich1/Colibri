@@ -69,7 +69,7 @@ namespace Colibri.GetDirection
                         null,
                         item.Latitude,
                         item.Longitude,
-                        50
+                        2
                     ],
                     AltitudeMode = 1,
                     AMSLAltAboveTerrain = null,

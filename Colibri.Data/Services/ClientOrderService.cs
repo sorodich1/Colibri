@@ -258,5 +258,19 @@ namespace Colibri.Data.Services
                 throw new InvalidOperationException("Ошибка удаления продукта из базы данных", ex);
             }
         }
+
+        public async Task<bool> UpdateOrdersAsync(Order order)
+        {
+            try
+            {
+                _context.Orders.Update(order);
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Ошибка обнавлении в базе данных карточки товара", ex);
+            }
+        }
     }
 }

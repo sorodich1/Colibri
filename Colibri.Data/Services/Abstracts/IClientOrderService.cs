@@ -25,6 +25,8 @@ namespace Colibri.Data.Services.Abstracts
 
         Task<List<Order>> GetLastFiveOrdersByUserAsync(User user);
 
+        Task<bool> UpdateOrdersAsync(Order order);
+
         /// <summary>
         /// Получает список всех заказов.
         /// </summary>

@@ -4,6 +4,7 @@ using Colibri.Data.Helpers;
 using Colibri.Data.Services.Abstracts;
 using Colibri.WebApi.Enum;
 using Colibri.WebApi.Models;
+using Colibri.WebApi.Services.Abstract;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -18,12 +19,12 @@ namespace Colibri.WebApi.Controllers
     /// </summary>
     [Route("order")]
     [ApiController]
-    public class ClientOrderController(IClientOrderService clientOrder, ILoggerService logger, IHttpConnectService httpConnect, IAccountService accountService) : Controller
+    public class ClientOrderController(IClientOrderService clientOrder, ILoggerService logger, IOrderStatusService orderStatusService, IAccountService accountService) : Controller
     {
         private readonly IClientOrderService _clientOrder = clientOrder;
         private readonly ILoggerService _logger = logger;
-        private readonly IHttpConnectService _httpConnect = httpConnect;
         private readonly IAccountService _accountService = accountService;
+        private readonly IOrderStatusService _orderStatusService = orderStatusService;
         /// <summary>
         /// Создание нового продукта.
         /// </summary>
@@ -116,7 +117,7 @@ namespace Colibri.WebApi.Controllers
                     ProductId = orderModel.ProductId,
                     Quentity = orderModel.Quentity,
                     UserId = orderModel.UserId,
-                    Status = OrderStatus.PREPARING.ToString(),
+                    Status = "PREPARING",
                     CreatedBy = User.Identity.Name,
                     CreatedAt = createdDate, // Добавляем дату создания
                     UpdatedAt = createdDate
@@ -135,6 +136,12 @@ namespace Colibri.WebApi.Controllers
                     CreatedDate = createdDate, // Возвращаем дату создания
                     Status = order.Status
                 };
+
+                await _orderStatusService.NotifyOrderUpdateAsync(order.Id, order.Status, new
+                    {
+                        changed_by = User.Identity.Name,
+                        timestamp = DateTime.UtcNow
+                    });
 
                 return Ok(response);
             }
