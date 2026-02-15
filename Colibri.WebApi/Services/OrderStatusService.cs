@@ -17,15 +17,13 @@ public class OrderStatusService(ILogger<OrderStatusService> logger, IClientOrder
 {
     private readonly ConcurrentDictionary<WebSocket, byte> _connectedClients = new();
     private readonly ConcurrentDictionary<int, ConcurrentDictionary<WebSocket, byte>> _orderSubscriptions = new();
-    private readonly ILogger<OrderStatusService> _logger;
-    private readonly IClientOrderService _clientOrderService;
+    private readonly ILogger<OrderStatusService> _logger = logger;
+    private readonly IClientOrderService _clientOrderService = clientOrderService;
 
     public void AddConnection(WebSocket webSocket)
     {
         _connectedClients.TryAdd(webSocket, 0);
         _logger.LogInformation($"Добавлено соединение WebSocket. Всего соединений.: {_connectedClients.Count}");
-
-
     }
 
     public async Task GetOrderUpdatesAsync(WebSocket webSocket)
@@ -121,7 +119,7 @@ public class OrderStatusService(ILogger<OrderStatusService> logger, IClientOrder
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Ошибка при уведомлении об обновлении заказа.: {ex.Message}");
+            _logger.LogError(ex, $"Ошибка при уведомлении об обновлении заказа.");
         }
     }
 

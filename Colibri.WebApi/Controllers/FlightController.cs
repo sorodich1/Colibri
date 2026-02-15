@@ -180,17 +180,17 @@ namespace Colibri.WebApi.Controllers
         /// </summary>
         [Authorize]
         [HttpPost("сonfirmпeolocation")]
-        public async Task<IActionResult> SetConfirmGeolocation([FromBody] GeoPoint geoPoint, int orderId)
+        public async Task<IActionResult> SetConfirmGeolocation([FromBody]ConfirmGeolocationRequest model)
         {
             try
             {
-                if (geoPoint == null)
+                if (model.GeoPoint == null)
                 {
                     _logger.LogMessage(User, "Пустой запрос или отсутствуют точки маршрута", LogLevel.Warning);
                     return BadRequest(new { error = "Отсутствуют точки маршрута" });
                 }
 
-                _logger.LogMessage(User, $"Отправка дрона с дронбокса продавцу - получено {geoPoint.Longitude} {geoPoint.Latitude}", LogLevel.Information);
+                _logger.LogMessage(User, $"Отправка дрона с дронбокса продавцу - получено {model.GeoPoint.Longitude} {model.GeoPoint.Latitude}", LogLevel.Information);
 
 
                 // 1. Получаем текущую позицию дрона
@@ -208,7 +208,7 @@ namespace Colibri.WebApi.Controllers
                 _logger.LogMessage(User, $"Текущая позиция дрона: Lat={startPoint.Latitude:F6}, Lon={startPoint.Longitude:F6}, Alt={startPoint.Altitude:F1}", LogLevel.Information);
 
                 // 2. Создаем список точек маршрута (от текущей позиции дрона к точке продавца)
-                var waypoints = new List<GeoPoint> { geoPoint };
+                var waypoints = new List<GeoPoint> { model.GeoPoint };
 
                 // 3. Создаем миссию
                 var mission = await _missionPlanning.CreateFullQgcMission(
@@ -243,13 +243,13 @@ namespace Colibri.WebApi.Controllers
 
 
 
-                var order = await _clientOrder.GetOrderByIdAsync(orderId);
+                var order = await _clientOrder.GetOrderByIdAsync(model.OrderId);
 
                 order.Status = "IS_GOING_TO";
 
                 await _clientOrder.UpdateOrdersAsync(order);
 
-                await _orderStatusService.NotifyOrderUpdateAsync(orderId, order.Status, new
+                await _orderStatusService.NotifyOrderUpdateAsync(model.OrderId, order.Status, new
                     {
                         changed_by = User.Identity.Name,
                         timestamp = DateTime.UtcNow
@@ -268,8 +268,8 @@ namespace Colibri.WebApi.Controllers
                     },
                     destination = new
                     {
-                        latitude = geoPoint.Latitude,
-                        longitude = geoPoint.Longitude
+                        latitude = model.GeoPoint.Latitude,
+                        longitude = model.GeoPoint.Longitude
                     }
                 });
             }

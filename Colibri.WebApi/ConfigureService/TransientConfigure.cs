@@ -37,7 +37,7 @@ namespace Colibri.WebApi.ConfigureService
             services.AddSingleton<DroneWebSocketHandler>();
             services.AddHostedService<DroneBoxBackgroundService>();
             services.AddTransient<IAccountService, AccountService>();
-
+            services.AddSingleton<IOrderStatusService, OrderStatusService>();
             
 
 

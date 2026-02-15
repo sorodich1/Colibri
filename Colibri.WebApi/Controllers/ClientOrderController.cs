@@ -2,6 +2,7 @@
 using Colibri.Data.Entity;
 using Colibri.Data.Helpers;
 using Colibri.Data.Services.Abstracts;
+using Colibri.WebApi.DTO;
 using Colibri.WebApi.Enum;
 using Colibri.WebApi.Models;
 using Colibri.WebApi.Services.Abstract;
@@ -125,23 +126,23 @@ namespace Colibri.WebApi.Controllers
 
                 await _clientOrder.CreadOrdersAsync(order);
 
-                _logger.LogMessage(User, $"Добавлена карточка товара в базу данных -- [{order.Id}]", LogLevel.Information);
+               // _logger.LogMessage(User, $"Добавлена карточка товара в базу данных -- [{order.Id}]", LogLevel.Information);
 
                 // Создаем объект ответа с нужными данными
-                var response = new
+                var response = new PlaceOrderResponse
                 {
                     Success = true,
                     Message = "Order created successfully",
                     OrderId = order.Id,
-                    CreatedDate = createdDate, // Возвращаем дату создания
+                    CreatedDate = createdDate,
                     Status = order.Status
                 };
 
                 await _orderStatusService.NotifyOrderUpdateAsync(order.Id, order.Status, new
-                    {
-                        changed_by = User.Identity.Name,
-                        timestamp = DateTime.UtcNow
-                    });
+                {
+                    changed_by = User.Identity.Name,
+                    timestamp = DateTime.UtcNow
+                });
 
                 return Ok(response);
             }

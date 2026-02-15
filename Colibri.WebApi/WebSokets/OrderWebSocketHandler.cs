@@ -8,116 +8,110 @@ using Colibri.WebApi.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
-namespace Colibri.WebApi.WebSokets
+public class OrderWebSocketHandler(OrderStatusService orderStatus, ILogger<OrderWebSocketHandler> logger)
 {
-    public class OrderWebSocketHandler(OrderStatusService orderStatus, ILogger<OrderWebSocketHandler> logger)
+    private readonly OrderStatusService _orderStatus = orderStatus;
+    private readonly ILogger<OrderWebSocketHandler> _logger = logger;
+
+    public async Task HandleWebSocketConnection(HttpContext context)
     {
-        private readonly OrderStatusService _orderStatus = orderStatus;
-        private readonly ILogger<OrderWebSocketHandler> _logger = logger;
-
-        public async Task HandleWebSocketConnection(HttpContext context)
+        try
         {
-            try
-            {
-                var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-                _orderStatus.AddConnection(webSocket);
-                _logger.LogInformation("Order WebSocket connection accepted");
+            var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+            _orderStatus.AddConnection(webSocket);
+            _logger.LogInformation("Order WebSocket connection accepted");
 
-                // Сразу отправляем текущие статусы заказов при подключении
-                await _orderStatus.NotifyAllClientsAsync();
-
-                // Обрабатываем сообщения от клиента
-                await HandleWebSocketMessages(webSocket);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error in Order WebSocket connection: {ex.Message}");
-            }
+            await _orderStatus.NotifyAllClientsAsync();
+            await HandleWebSocketMessages(webSocket);
         }
-
-        private async Task HandleWebSocketMessages(WebSocket webSocket)
+        catch (Exception ex)
         {
-            var buffer = new byte[1024 * 4];
+            // ✅ ИСПРАВЛЕНО
+            _logger.LogError(ex, "Error in Order WebSocket connection");
+        }
+    }
 
-            try
+    private async Task HandleWebSocketMessages(WebSocket webSocket)
+    {
+        var buffer = new byte[1024 * 4];
+
+        try
+        {
+            while (webSocket.State == WebSocketState.Open)
             {
-                while (webSocket.State == WebSocketState.Open)
+                var result = await webSocket.ReceiveAsync(
+                    new ArraySegment<byte>(buffer),
+                    CancellationToken.None);
+
+                if (result.MessageType == WebSocketMessageType.Close)
                 {
-                    var result = await webSocket.ReceiveAsync(
-                        new ArraySegment<byte>(buffer),
+                    await webSocket.CloseAsync(
+                        WebSocketCloseStatus.NormalClosure,
+                        "Connection closed",
                         CancellationToken.None);
-
-                    if (result.MessageType == WebSocketMessageType.Close)
-                    {
-                        await webSocket.CloseAsync(
-                            WebSocketCloseStatus.NormalClosure,
-                            "Connection closed",
-                            CancellationToken.None);
-                        break;
-                    }
-
-                    // Обработка входящих сообщений
-                    if (result.MessageType == WebSocketMessageType.Text)
-                    {
-                        var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                        _logger.LogDebug($"Received Order WebSocket message: {message}");
-
-                        await HandleClientMessage(message, webSocket);
-                    }
+                    break;
                 }
-            }
-            finally
-            {
-                _orderStatus.RemoveConnection(webSocket);
-                webSocket?.Dispose();
-            }
-        }
 
-        private async Task HandleClientMessage(string message, WebSocket webSocket)
-        {
-            try
-            {
-                var messageObj = JsonSerializer.Deserialize<OrderWebSocketMessage>(message);
-
-                if (messageObj != null)
+                if (result.MessageType == WebSocketMessageType.Text)
                 {
-                    switch (messageObj.Type)
-                    {
-                        case "get_status":
-                            await _orderStatus.NotifyAllClientsAsync();
-                            break;
-
-                        case "subscribe_order":
-                            if (messageObj.Data.TryGetProperty("orderId", out var orderIdElement))
-                            {
-                                var orderId = orderIdElement.GetInt32();
-                                await _orderStatus.SubscribeToOrder(webSocket, orderId);
-                            }
-                            break;
-
-                        case "unsubscribe_order":
-                            if (messageObj.Data.TryGetProperty("orderId", out var orderIdElement2))
-                            {
-                                var orderId = orderIdElement2.GetInt32();
-                                await _orderStatus.UnsubscribeFromOrder(webSocket, orderId);
-                            }
-                            break;
-
-                        case "get_order_updates":
-                            await _orderStatus.GetOrderUpdatesAsync(webSocket);
-                            break;
-                    }
+                    var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    _logger.LogDebug("Received Order WebSocket message: {Message}", message);
+                    await HandleClientMessage(message, webSocket);
                 }
             }
-            catch (Exception ex)
+        }
+        finally
+        {
+            _orderStatus.RemoveConnection(webSocket);
+            webSocket?.Dispose();
+        }
+    }
+
+    private async Task HandleClientMessage(string message, WebSocket webSocket)
+    {
+        try
+        {
+            var messageObj = JsonSerializer.Deserialize<OrderWebSocketMessage>(message);
+
+            if (messageObj != null)
             {
-                _logger.LogError($"Ошибка обработки сообщения клиента Order: {ex.Message}");
+                switch (messageObj.Type)
+                {
+                    case "get_status":
+                        await _orderStatus.NotifyAllClientsAsync();
+                        break;
+
+                    case "subscribe_order":
+                        if (messageObj.Data.TryGetProperty("orderId", out var orderIdElement))
+                        {
+                            var orderId = orderIdElement.GetInt32();
+                            await _orderStatus.SubscribeToOrder(webSocket, orderId);
+                        }
+                        break;
+
+                    case "unsubscribe_order":
+                        if (messageObj.Data.TryGetProperty("orderId", out var orderIdElement2))
+                        {
+                            var orderId = orderIdElement2.GetInt32();
+                            await _orderStatus.UnsubscribeFromOrder(webSocket, orderId);
+                        }
+                        break;
+
+                    case "get_order_updates":
+                        await _orderStatus.GetOrderUpdatesAsync(webSocket);
+                        break;
+                }
             }
         }
-        private class OrderWebSocketMessage
+        catch (Exception ex)
         {
-            public string Type { get; set; }
-            public JsonElement Data { get; set; }
+            _logger.LogError(ex, "Ошибка обработки сообщения клиента Order");
         }
+    }
+
+    private class OrderWebSocketMessage
+    {
+        public string Type { get; set; }
+        public JsonElement Data { get; set; }
     }
 }
