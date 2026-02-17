@@ -44,6 +44,7 @@ namespace Colibri.WebApi.ConfigureService
             services.AddSingleton<IDroneBoxStatusService, DroneBoxStatusService>();
             services.AddScoped<IPingService, PingService>();
             services.AddSingleton<DroneBoxStatusService>();
+            services.AddTransient<IOrderStatusService, OrderStatusService>();
 
             services.AddTransient<IJwtGenerator>(provider =>
             new JwtGenerator(

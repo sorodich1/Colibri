@@ -205,6 +205,21 @@ namespace Colibri.WebApi.Controllers
                 }
 
                 var startPoint = dronePosition.Position;
+
+
+
+                var homeSetResult = await _homePositionService.SetHomePosition(startPoint);
+
+                if (!homeSetResult)
+                {
+                    _logger.LogMessage(User, "Предупреждение: Не удалось сохранить домашнюю позицию", LogLevel.Warning);
+                }
+                else
+                {
+                    _logger.LogMessage(User, $"Домашняя позиция сохранена: Lat={startPoint.Latitude:F6}, Lon={startPoint.Longitude:F6}", LogLevel.Information);
+                }
+
+
                 _logger.LogMessage(User, $"Текущая позиция дрона: Lat={startPoint.Latitude:F6}, Lon={startPoint.Longitude:F6}, Alt={startPoint.Altitude:F1}", LogLevel.Information);
 
                 // 2. Создаем список точек маршрута (от текущей позиции дрона к точке продавца)
@@ -320,6 +335,7 @@ namespace Colibri.WebApi.Controllers
                 }
 
                 var startPoint = dronePosition.Position;
+
                 var waypoints = new List<GeoPoint> { buyerGeoPoint };
 
                 var mission = await _missionPlanning.CreateFullQgcMission(
@@ -422,7 +438,7 @@ namespace Colibri.WebApi.Controllers
                 var mission = await _missionPlanning.CreateFullQgcMission(
                     startPoint: startPoint,
                     waypoints: waypoints,
-                    returnToHome: false // Посадка в дронбоксе
+                    returnToHome: true // Посадка в дронбоксе
                 );
 
                 if (mission == null)
