@@ -41,16 +41,15 @@ public class MissionPlanningService : IMissionPlanningService
         }
 
         // ВСЕГДА обновляем домашнюю позицию при создании новой миссии
-        var homeSetResult = await _homePositionService.SetHomePosition(startPoint);
+        var savedHomePosition = await _homePositionService.GetHomePosition();
         
-        if (!homeSetResult)
+        if (savedHomePosition ==null )
         {
-            _logger.LogWarning($"Не удалось обновить домашнюю позицию для новой миссии");
+           _logger.LogWarning("Домашняя позиция ещё не установлена. Рекомендуется сначала вызвать SetConfirmGeolocation");
         }
         else
         {
-            _logger.LogInformation($"Домашняя позиция ОБНОВЛЕНА для миссии с {waypoints.Count} точками: " +
-                                $"Lat={startPoint.Latitude:F6}, Lon={startPoint.Longitude:F6}");
+            _logger.LogDebug($"Используем сохранённую домашнюю позицию: Lat={savedHomePosition.Latitude:F6}, Lon={savedHomePosition.Longitude:F6}");
         }
 
         var missionItems = new List<Dictionary<string, object>>();
@@ -123,6 +122,16 @@ public class MissionPlanningService : IMissionPlanningService
         // 4. Если нужно вернуться в точку взлета (домашнюю позицию)
         if (returnToHome)
         {
+            var homePosition = await _homePositionService.GetHomePosition();
+            if (homePosition == null)
+            {
+                _logger.LogWarning("Запрошен возврат домой, но домашняя позиция не установлена. Используем startPoint как запасной вариант.");
+            }
+            else
+            {
+                _logger.LogInformation($"Возврат в сохранённую домашнюю позицию: Lat={homePosition.Latitude:F6}, Lon={homePosition.Longitude:F6}");
+            }
+
             // Команда скорости перед возвратом домой
             missionItems.Add(new Dictionary<string, object>
             {
@@ -164,7 +173,22 @@ public class MissionPlanningService : IMissionPlanningService
         });
 
         // 6. Команда посадки (в последней точке или дома)
-        var landingPoint = returnToHome ? startPoint : waypoints.Last();
+        GeoPoint landingPoint;
+
+        if (returnToHome)
+        {
+            // При возврате домой садимся в сохранённую домашнюю позицию
+            var homePosition = await _homePositionService.GetHomePosition();
+            landingPoint = homePosition ?? startPoint;
+            _logger.LogInformation($"Посадка в домашней позиции: ({landingPoint.Latitude:F6}, {landingPoint.Longitude:F6})");
+        }
+        else
+        {
+            // Иначе садимся в последней точке маршрута
+            landingPoint = waypoints.Last();
+            _logger.LogInformation($"Посадка в последней точке маршрута: ({landingPoint.Latitude:F6}, {landingPoint.Longitude:F6})");
+        }
+
         missionItems.Add(new Dictionary<string, object>
         {
             ["AMSLAltAboveTerrain"] = null,
@@ -177,7 +201,7 @@ public class MissionPlanningService : IMissionPlanningService
             ["params"] = new object[] { 0, 0, 0, null, landingPoint.Latitude, landingPoint.Longitude, 0 },
             ["type"] = "SimpleItem"
         });
-
+        var displayHomePosition = await _homePositionService.GetHomePosition() ?? startPoint;
         // Формируем полную миссию в формате QGC
         var mission = new Dictionary<string, object>
         {
@@ -196,7 +220,7 @@ public class MissionPlanningService : IMissionPlanningService
                 ["globalPlanAltitudeMode"] = 0, // Relative
                 ["hoverSpeed"] = hoverSpeed,
                 ["items"] = missionItems,
-                ["plannedHomePosition"] = new double[] { startPoint.Latitude, startPoint.Longitude, takeoffAltitude },
+                ["plannedHomePosition"] = new double[] { displayHomePosition.Latitude, displayHomePosition.Longitude, takeoffAltitude },
                 ["vehicleType"] = 2, // Quadrotor
                 ["version"] = 2
             },
