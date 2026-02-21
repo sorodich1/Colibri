@@ -179,7 +179,7 @@ namespace Colibri.WebApi.Controllers
         /// Отправить дрон продавцу (кнопка - "Подтвердить геолокацию")
         /// </summary>
         [Authorize]
-        [HttpPost("сonfirmпeolocation")]
+        [HttpPost("confirmneolocation")]
         public async Task<IActionResult> SetConfirmGeolocation([FromBody]ConfirmGeolocationRequest model)
         {
             try
