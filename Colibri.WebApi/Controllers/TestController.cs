@@ -230,6 +230,24 @@ namespace Colibri.WebApi.Controllers
                     var lastWaypoint = request.Waypoints.Last();
                     await LogMissionCreation(request.Waypoints.Count, startPoint, lastWaypoint);
 
+                    _ = Task.Run(async () => {
+                    var landCommand = new { Takeoff = false };
+                    
+                    for (int i = 0; i < 100; i++) // 100 попыток * 3 сек = 5 минут
+                    {
+                        await Task.Delay(3000);
+                        
+                        var status = await _droneConnection.GetMissionStatus();
+                        
+                        if (status.Completed)
+                        {
+                            _logger.LogMessage(User, "✅ Миссия завершена, отправляем команду посадки", LogLevel.Information);
+                            await _droneConnection.SendCommandToDrone("takeoff-land", landCommand);
+                            break;
+                        }
+                    }
+                });
+
                     _logger.LogMessage(User, 
                         $"Миссия успешно отправлена на дрон! Точки: {request.Waypoints.Count}", 
                         LogLevel.Information);

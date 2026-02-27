@@ -100,4 +100,29 @@ public class DroneConnectionService : IDroneConnectionService
             };
         }
     }
+
+    public async Task<MissionStatus> GetMissionStatus()
+    {
+        try
+        {
+            var url = $"{DRONE_BASE_URL}/mission-status";
+            var response = await _httpConnect.GetAsync(url);
+            
+            if (string.IsNullOrEmpty(response))
+                return new MissionStatus { Completed = false, InAir = false };
+            
+            var data = JsonConvert.DeserializeObject<dynamic>(response);
+            return new MissionStatus
+            {
+                Completed = data.completed,
+                InAir = data.in_air,
+                Timestamp = data.timestamp
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Ошибка получения статуса миссии: {ex.Message}");
+            return new MissionStatus { Completed = false, InAir = false };
+        }
+    }
 }

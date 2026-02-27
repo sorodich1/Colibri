@@ -8,4 +8,5 @@ public interface IDroneConnectionService
 {
         Task<DroneConnectionResult> SendCommandToDrone(string endpoint, object command);
         Task<string> GetActiveDroneUrl();
+        Task<MissionStatus> GetMissionStatus();
 }

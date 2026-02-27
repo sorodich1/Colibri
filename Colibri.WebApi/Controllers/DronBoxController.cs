@@ -39,30 +39,25 @@ namespace Colibri.WebApi.Controllers
             {
                 _logger.LogMessage(User, $"🚀 Команда: Roof, параметр: {active}", LogLevel.Information);
                 
-                var command = new
-                {
-                    command = "roof",
-                    state = active,
-                    timestamp = DateTime.UtcNow.ToString("o")
-                };
+                // Отправляем простую строку, а не объект
+                string command = active ? "ACTON" : "ACTOFF";  // Или "ROOFON"/"ROOFOFF"
+                string response = await SendToLinuxCNC(command);
                 
-                var result = await _droneConnectionService.SendCommandToDrone("box/control", command);
-                
-                if (result.Success)
+                if (response.StartsWith("OK:"))
                 {
                     _logger.LogMessage(User, $"✅ Roof успешно {(active ? "открыта" : "закрыта")}", LogLevel.Information);
-                    return Ok("success");
+                    return Ok(new { status = "success", message = response });
                 }
                 else
                 {
-                    _logger.LogMessage(User, $"❌ Ошибка Roof", LogLevel.Error);
-                    return BadRequest("error");
+                    _logger.LogMessage(User, $"❌ Ошибка Roof: {response}", LogLevel.Error);
+                    return BadRequest(new { status = "error", message = response });
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
-                return StatusCode(500, "error");
+                return StatusCode(500, new { status = "error", message = ex.Message });
             }
         }
 

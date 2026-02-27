@@ -141,6 +141,24 @@ namespace Colibri.WebApi.Controllers
             if (!result.Success)
                 return StatusCode(503, new { error = "Дрон недоступен" });
 
+            _ = Task.Run(async () => {
+                var landCommand = new { Takeoff = false };
+                
+                while (true)
+                {
+                    await Task.Delay(3000); // Опрос каждые 3 секунды
+                    
+                    var status = await _droneConnection.GetMissionStatus();
+                    
+                    if (status.Completed)
+                    {
+                        _logger.LogMessage(null, "✅ Миссия завершена, отправляем команду посадки", LogLevel.Information);
+                        await _droneConnection.SendCommandToDrone("takeoff-land", landCommand);
+                        break;
+                    }
+                }
+            });
+
             return Ok(new { status = "flight_started", drone = result.DroneUrl });
         }
 
