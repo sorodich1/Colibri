@@ -58,7 +58,7 @@ public class MissionPlanningService : IMissionPlanningService
         });
 
         // 2. ПУТЕВЫЕ ТОЧКИ (только 16 команды, без 178 между ними)
-        for (int i = 0; i < waypoints.Count; i++)
+        for (int i = 1; i < waypoints.Count; i++)
         {
             var waypoint = waypoints[i];
             double pointAltitude = waypoint.Altitude > 0 ? waypoint.Altitude : altitude;

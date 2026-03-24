@@ -30,7 +30,7 @@ namespace Colibri.WebApi.Services
         {
             try
             {
-                _logger.LogInformation($"Checking drone box status at {DRONE_BOX_IP}");
+               // _logger.LogInformation($"Checking drone box status at {DRONE_BOX_IP}");
 
                 // Проверяем доступность дронбокса
                 bool isOnline = await _pingService.PingHostAsync(DRONE_BOX_IP);
@@ -48,7 +48,7 @@ namespace Colibri.WebApi.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error checking drone box status: {ex.Message}");
+               // _logger.LogError($"Error checking drone box status: {ex.Message}");
                 
                 // Отправляем сообщение об ошибке
                 await SendStatusToAllAsync(new

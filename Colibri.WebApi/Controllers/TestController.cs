@@ -156,128 +156,178 @@ namespace Colibri.WebApi.Controllers
         public async Task<IActionResult> TestAutopilot([FromBody] GeoMissionRequest request)
         {
             try
+            {
+                if (request?.Waypoints == null || request.Waypoints.Count == 0)
                 {
-                    if (request?.Waypoints == null || request.Waypoints.Count == 0)
-                    {
-                        _logger.LogMessage(User, "Пустой запрос или отсутствуют точки маршрута", LogLevel.Warning);
-                        return BadRequest(new { error = "Отсутствуют точки маршрута" });
-                    }
+                    _logger.LogMessage(User, "Пустой запрос или отсутствуют точки маршрута", LogLevel.Warning);
+                    return BadRequest(new { error = "Отсутствуют точки маршрута" });
+                }
 
+                _logger.LogMessage(User, 
+                    $"Тестируется полёт по геоточкам - получено {request.Waypoints.Count} точек", 
+                    LogLevel.Information);
+
+                // Логируем полученные точки
+                foreach (var (point, index) in request.Waypoints.Select((p, i) => (p, i)))
+                {
                     _logger.LogMessage(User, 
-                        $"Тестируется полёт по геоточкам - получено {request.Waypoints.Count} точек", 
-                        LogLevel.Information);
+                        $"Точка {index + 1}: Lat={point.Latitude:F6}, Lon={point.Longitude:F6}", 
+                        LogLevel.Debug);
+                }
 
-                    // Логируем полученные точки
-                    foreach (var (point, index) in request.Waypoints.Select((p, i) => (p, i)))
-                    {
-                        _logger.LogMessage(User, 
-                            $"Точка {index + 1}: Lat={point.Latitude:F6}, Lon={point.Longitude:F6}", 
-                            LogLevel.Debug);
-                    }
+                // 1. Получаем текущую позицию дрона
+                var activeDroneUrl = DRONE_BASE_URL;
+                var dronePosition = await _missionPlanning.GetCurrentDronePosition(activeDroneUrl);
+                
+                if (dronePosition == null)
+                {
+                    _logger.LogMessage(User, "Не удалось получить текущую позицию дрона", LogLevel.Error);
+                    return Ok(new { status = "error", message = "Не удалось получить позицию дрона" });
+                }
 
-                    // 1. Получаем текущую позицию дрона
-                    var activeDroneUrl = DRONE_BASE_URL;
-                    var dronePosition = await _missionPlanning.GetCurrentDronePosition(activeDroneUrl);
-                    
-                    if (dronePosition == null)
-                    {
-                        _logger.LogMessage(User, "Не удалось получить текущую позицию дрона", LogLevel.Error);
-                        return Ok(new { status = "error", message = "Не удалось получить позицию дрона" });
-                    }
+                var startPoint = dronePosition.Position;
+                
+                _logger.LogMessage(User, 
+                    $"Текущая позиция дрона: Lat={startPoint.Latitude:F6}, Lon={startPoint.Longitude:F6}, Alt={startPoint.Altitude:F1}", 
+                    LogLevel.Information);
 
-                    var startPoint = dronePosition.Position;
-                    
+                // 2. Создаем миссию
+                var mission = await _missionPlanning.CreateFullQgcMission(
+                    startPoint: startPoint,
+                    waypoints: request.Waypoints,
+                    returnToHome: false
+                );
+
+                var missionJson = JsonConvert.SerializeObject(mission, Formatting.Indented);
+                _logger.LogMessage(User, $"СФОРМИРОВАНО ПОЛЁТНОЕ ЗАДАНИЕ (JSON):\n{missionJson}", LogLevel.Information);
+
+                if (mission == null)
+                {
+                    _logger.LogMessage(User, "Не удалось создать миссию", LogLevel.Error);
+                    return Ok(new { status = "error", message = "Не удалось создать миссию" });
+                }
+
+                // 3. Отправляем миссию на дрон
+                _logger.LogMessage(User, "Отправляем миссию на дрон...", LogLevel.Information);
+                
+                var result = await _droneConnection.SendCommandToDrone("execute-mission", mission);
+
+                if (!result.Success)
+                {
                     _logger.LogMessage(User, 
-                        $"Текущая позиция дрона: Lat={startPoint.Latitude:F6}, Lon={startPoint.Longitude:F6}, Alt={startPoint.Altitude:F1}", 
-                        LogLevel.Information);
+                        $"Не удалось отправить миссию на дрон: {result.ErrorMessage}", 
+                        LogLevel.Error);
+                    return Ok(new { 
+                        status = "error", 
+                        message = "Не удалось отправить миссию на дрон",
+                        details = result.ErrorMessage
+                    });
+                }
 
-                    // 2. Создаем миссию из всех точек (используем новый метод для массива точек)
-                    // Параметр returnToHome = false - не возвращаемся в точку взлета, садимся в последней точке
-                    var mission = await _missionPlanning.CreateFullQgcMission(
-                        startPoint: startPoint,
-                        waypoints: request.Waypoints,
-                        returnToHome: false // Посадка в последней точке маршрута
-                    );
+                // 4. Логируем создание миссии
+                var lastWaypoint = request.Waypoints.Last();
+                await LogMissionCreation(request.Waypoints.Count, startPoint, lastWaypoint);
 
-                    var missionJson = JsonConvert.SerializeObject(mission, Formatting.Indented); _logger.LogMessage(User, 
-                            $"СФОРМИРОВАНО ПОЛЁТНОЕ ЗАДАНИЕ (JSON):\n{missionJson}", LogLevel.Information);
-
-
-                    if (mission == null)
-                    {
-                        _logger.LogMessage(User, "Не удалось создать миссию", LogLevel.Error);
-                        return Ok(new { status = "error", message = "Не удалось создать миссию" });
-                    }
-
-                    // 4. Отправляем миссию на дрон
-                    _logger.LogMessage(User, "Отправляем миссию на дрон...", LogLevel.Information);
-                    
-                    var result = await _droneConnection.SendCommandToDrone("execute-mission", mission);
-
-                    if (!result.Success)
-                    {
-                        _logger.LogMessage(User, 
-                            $"Не удалось отправить миссию на дрон: {result.ErrorMessage}", 
-                            LogLevel.Error);
-                        return Ok(new { 
-                            status = "error", 
-                            message = "Не удалось отправить миссию на дрон",
-                            details = result.ErrorMessage
-                        });
-                    }
-
-                    // 5. Логируем создание миссии
-                    var lastWaypoint = request.Waypoints.Last();
-                    await LogMissionCreation(request.Waypoints.Count, startPoint, lastWaypoint);
-
-                    _ = Task.Run(async () => {
+                // 5. ЗАПУСК МОНИТОРИНГА (исправленная версия)
+                _logger.LogMessage(User, "🔥 ЗАПУСК МОНИТОРИНГА ЗАВЕРШЕНИЯ МИССИИ", LogLevel.Information);
+                
+                _ = Task.Run(async () => {
                     var landCommand = new { Takeoff = false };
+                    int consecutiveErrors = 0;
                     
-                    for (int i = 0; i < 100; i++) // 100 попыток * 3 сек = 5 минут
+                    _logger.LogMessage(User, "📡 Мониторинг активен, опрос каждые 3 секунды", LogLevel.Information);
+                    
+                    while (true)
                     {
                         await Task.Delay(3000);
                         
-                        var status = await _droneConnection.GetMissionStatus();
-                        
-                        if (status.Completed)
+                        try
                         {
-                            _logger.LogMessage(User, "✅ Миссия завершена, отправляем команду посадки", LogLevel.Information);
-                            await _droneConnection.SendCommandToDrone("takeoff-land", landCommand);
-                            break;
+                            // Проверяем доступность дрона
+                            var pingResult = await _droneConnection.SendCommandToDrone("status", new { Command = "PING" });
+                            
+                            if (!pingResult.Success)
+                            {
+                                consecutiveErrors++;
+                                _logger.LogMessage(User, $"⚠️ Дрон недоступен {consecutiveErrors} раз подряд", LogLevel.Warning);
+                                
+                                if (consecutiveErrors > 5)
+                                {
+                                    _logger.LogMessage(User, "🛑 Дрон отключен, прекращаем мониторинг", LogLevel.Error);
+                                    break;
+                                }
+                                continue;
+                            }
+                            
+                            // Сбрасываем счетчик ошибок при успешном подключении
+                            consecutiveErrors = 0;
+                            
+                            // Получаем статус миссии
+                            var status = await _droneConnection.GetMissionStatus();
+                            _logger.LogMessage(User, $"📊 Статус: Completed={status.Completed}", LogLevel.Debug);
+                            
+                            if (status.Completed)
+                            {
+                                _logger.LogMessage(User, "✅ Миссия завершена, отправляем команду посадки", LogLevel.Information);
+                                
+                                var landResult = await _droneConnection.SendCommandToDrone("takeoff-land", landCommand);
+                                
+                                if (landResult.Success)
+                                {
+                                    _logger.LogMessage(User, "✅ Команда посадки успешно отправлена", LogLevel.Information);
+                                }
+                                else
+                                {
+                                    _logger.LogMessage(User, $"❌ Ошибка отправки посадки: {landResult.ErrorMessage}", LogLevel.Error);
+                                }
+                                
+                                break; // Выходим из цикла мониторинга
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogMessage(User, $"❌ Ошибка в мониторинге: {ex.Message}", LogLevel.Error);
+                            consecutiveErrors++;
+                            
+                            if (consecutiveErrors > 5)
+                            {
+                                _logger.LogMessage(User, "🛑 Слишком много ошибок, прекращаем мониторинг", LogLevel.Error);
+                                break;
+                            }
                         }
                     }
                 });
 
-                    _logger.LogMessage(User, 
-                        $"Миссия успешно отправлена на дрон! Точки: {request.Waypoints.Count}", 
-                        LogLevel.Information);
+                _logger.LogMessage(User, 
+                    $"Миссия успешно отправлена на дрон! Точки: {request.Waypoints.Count}", 
+                    LogLevel.Information);
 
-                    return Ok(new { 
-                        status = "success", 
-                        message = "Миссия отправлена на дрон",
-                        waypoints_count = request.Waypoints.Count,
-                        start_point = new { 
-                            latitude = startPoint.Latitude,
-                            longitude = startPoint.Longitude,
-                            altitude = startPoint.Altitude 
-                        },
-                        target_points = request.Waypoints.Select((w, i) => new { 
-                            index = i + 1,
-                            latitude = w.Latitude,
-                            longitude = w.Longitude
-                        }),
-                        home_position_set = true // Домашняя позиция установлена автоматически
-                    });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
-                    return StatusCode(500, new { 
-                        status = "error", 
-                        message = ex.Message,
-                        details = ex.StackTrace 
-                    });
-                }
+                return Ok(new { 
+                    status = "success", 
+                    message = "Миссия отправлена на дрон",
+                    waypoints_count = request.Waypoints.Count,
+                    start_point = new { 
+                        latitude = startPoint.Latitude,
+                        longitude = startPoint.Longitude,
+                        altitude = startPoint.Altitude 
+                    },
+                    target_points = request.Waypoints.Select((w, i) => new { 
+                        index = i + 1,
+                        latitude = w.Latitude,
+                        longitude = w.Longitude
+                    }),
+                    home_position_set = true
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogMessage(User, Auxiliary.GetDetailedExceptionMessage(ex), LogLevel.Error);
+                return StatusCode(500, new { 
+                    status = "error", 
+                    message = ex.Message,
+                    details = ex.StackTrace 
+                });
+            }
         }
 
         /// <summary>
